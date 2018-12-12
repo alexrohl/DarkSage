@@ -13,7 +13,7 @@ matplotlib.rcParams.update({'font.size': fsize, 'xtick.major.size': 10, 'ytick.m
 
 
 ###### USER NEEDS TO SET THESE THINGS ######
-indir = '/Users/adam/DarkSage_runs/558/' # directory where the Dark Sage data are
+indir = 'results/millennium/' # directory where the Dark Sage data are
 sim = 0 # which simulation Dark Sage has been run on -- if it's new, you will need to set its defaults below.
 #   0 = Mini Millennium, 1 = Full Millennium
 
