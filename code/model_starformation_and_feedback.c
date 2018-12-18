@@ -43,10 +43,12 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
 
   Gal[p].SfrDiskColdGas[step] = Gal[p].ColdGas;
   Gal[p].SfrDiskColdGasMetals[step] = Gal[p].MetalsColdGas; // I believe TAO wants these fields.  Otherwise irrelevant
+  //TAO Theoretical Astrophysical Observatory, Download catalogues of models.
     
   update_HI_H2(p);
+  //recomputes fraction of gas in form of h1 h2 hydrogren
     
-  if(SFprescription==2) // Prescription based on SAGE
+  if(SFprescription==2) // Old School Prescription based on SAGE
   {
       reff = 3.0 * Gal[p].DiskScaleRadius;
       tdyn = reff / Gal[p].Vvir;
@@ -58,7 +60,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
       for(i=N_BINS-1; i>=0; i--) H2sum += Gal[p].DiscH2[i];
   }
 
-  for(i=0; i<N_BINS; i++)
+  for(i=0; i<N_BINS; i++) // Loops through annuli
   {
 	if(Gal[p].DiscStarsMetals[i] > Gal[p].DiscStars[i]) printf("DiscStars, Metals = %e, %e\n", Gal[p].DiscStars[i], Gal[p].DiscStarsMetals[i]);
 	assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
@@ -66,9 +68,9 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
       
-    area = M_PI * (r_outer*r_outer - r_inner*r_inner);
+    area = M_PI * (r_outer*r_outer - r_inner*r_inner); //area of annulis
 		
-	if(Gal[p].Vvir>0) // These galaxies (which aren't useful for science) won't have H2 to form stars
+	if(Gal[p].Vvir>0) //test purposes
 	{
         if(SFprescription==1 && Gal[p].DiscH2[i]<0.5*Gal[p].DiscHI[i])
         {
@@ -86,30 +88,34 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
                 strdot = 0.0;
         }
         else
+            // calculation of star formation rate
             strdot = SfrEfficiency * SFE_H2 * Gal[p].DiscH2[i];
     }
-    else
+    else // These galaxies (which aren't useful for science) won't have H2 to form stars
         strdot = 0.0;
 
-    stars = strdot * dt;
+    stars = strdot * dt; //dt time step -> total mass of stars formed
 	
-	if(stars < MIN_STARFORMATION)
+	if(stars < MIN_STARFORMATION) //minimum threshold
 	  stars = 0.0;
 
     if(stars > Gal[p].DiscGas[i])
       stars = Gal[p].DiscGas[i];
 
-    if(SupernovaRecipeOn > 0 && Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN)
+    //supernoveRecipeOn>0 -> stellar feedback
+    if(SupernovaRecipeOn > 0 && Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN) //too low mass to make supernovas
 	{
         if(SupernovaRecipeOn == 1)
+            //!!!uses equation in the paper for supernova feedback
         {
+            //finds Sigma_0gas the reference surface density
             Sigma_0gas = FeedbackGasSigma * (SOLAR_MASS / UnitMass_in_g) / sqr(CM_PER_MPC/1e6 / UnitLength_in_cm);            
-            if(FeedbackExponent!=1.0)
-                reheated_mass = FeedbackReheatingEpsilon * stars * pow(Sigma_0gas / (Gal[p].DiscGas[i]/area), FeedbackExponent);
-            else
-                reheated_mass = FeedbackReheatingEpsilon * stars * Sigma_0gas / (Gal[p].DiscGas[i]/area);
+            
+            //reheated_mass = FeedbackReheatingEpsilon * stars * pow(Sigma_0gas / (Gal[p].DiscGas[i]/area), FeedbackExponent);
+            reheated_mass = 0;
         }
         else if(SupernovaRecipeOn == 2)
+            //uniform reheated fraction
             reheated_mass = FeedbackReheatingEpsilon * stars;
 
 		// Can't use more cold gas than is available, so balance SF and feedback 
@@ -129,6 +135,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
         if(reheated_mass < MIN_STARFORMATION)
         reheated_mass = 0.0; // Limit doesn't have to be the same as MIN_STARFORMATION, but needs to be something reasonable
 	
+        //equation already formed from energy arguents
 	    ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (Gal[centralgal].Vvir * Gal[centralgal].Vvir) - FeedbackReheatingEpsilon) * stars;
 	    if(ejected_mass < MIN_STARFORMATION)
 	        ejected_mass = 0.0;
@@ -142,21 +149,23 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
 	}
 
     Gal[p].DiscSFR[i] += stars / dt;
-	stars_sum += stars;
-    ejected_sum += ejected_mass;
+	//^ stores sfr
+    stars_sum += stars; //counting total stars formed accross annuli
+    ejected_sum += ejected_mass; //gas ejected from halo around galaxy
 
 	DiscPre = Gal[p].DiscGas[i];
-	ColdPre = Gal[p].ColdGas;
+	ColdPre = Gal[p].ColdGas; //checking values before the function
 
     // Update for star formation
     metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
 	assert(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
     if(stars>=MIN_STARS_FOR_SN)
     {
-        NewStars[i] = (1 - RecycleFraction) * stars;
+        NewStars[i] = (1 - RecycleFraction) * stars; //builds temporary stellar disc
+        //recyclefraction -> mass of stars just formed, immediately returned back to the gas
         NewStarsMetals[i] = (1 - RecycleFraction) * metallicity * stars;
     }
-    else
+    else //no feedback in this case (rare)
     {
         NewStars[i] = stars;
         NewStarsMetals[i] = metallicity * stars;
@@ -168,6 +177,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
       }
 	assert(NewStarsMetals[i] <= NewStars[i]);
     update_from_star_formation(p, stars, metallicity, i);
+      //^ takes mass out of the gas disc to conserve mass
 
 	if(Gal[p].DiscStarsMetals[i] > Gal[p].DiscStars[i]) printf("DiscStars, Metals = %e, %e\n", Gal[p].DiscStars[i], Gal[p].DiscStarsMetals[i]);
 	assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
@@ -188,7 +198,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
     assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
     if(reheated_mass > 0.0)
       update_from_feedback(p, centralgal, reheated_mass, metallicity, i);
-
+      //^ taking reheated gas out of disc and into the hot gas halo
       assert(fabs(Gal[p].ColdGas-ColdPre) <= 1.01*fabs(Gal[p].DiscGas[i]-DiscPre) && fabs(Gal[p].ColdGas-ColdPre) >= 0.999*fabs(Gal[p].DiscGas[i]-DiscPre) && (Gal[p].ColdGas-ColdPre)*(Gal[p].DiscGas[i]-DiscPre)>=0.0);
 
 	// Inject new metals from SN II
@@ -204,6 +214,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   }
 
   update_from_ejection(p, centralgal, ejected_sum);
+    //^ updating masses after ejection
     
   double NewStarSum = 0.0;
   for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
@@ -211,6 +222,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   // Sum stellar discs together
   if(NewStarSum>0.0)
     combine_stellar_discs(p, NewStars, NewStarsMetals);
+    // combines old and new stellar disc, maps stars to this new disc from old and new stellar discs
 
   // Update the star formation rate 
   Gal[p].SfrFromH2[step] += stars_sum / dt;
