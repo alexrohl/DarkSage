@@ -673,6 +673,8 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
 	if(stars > Gal[merger_centralgal].DiscGas[k])
       stars = Gal[merger_centralgal].DiscGas[k];
 	
+      
+    //MODULARISE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 	// this bursting results in SN feedback on the cold/hot gas 
     if(SupernovaRecipeOn>0 && Gal[merger_centralgal].DiscGas[k] > 0.0 && stars>=MIN_STARS_FOR_SN)
 	{
@@ -770,6 +772,7 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
      
   if(ejected_sum>0.0)
       update_from_ejection(merger_centralgal, centralgal, ejected_sum);
+  //MODULARISE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
      
   if(stars_sum>0)
   {

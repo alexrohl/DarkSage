@@ -33,7 +33,11 @@ void myexit(int signum);
 
 void finalize_galaxy_file(int filenr);
 
+// sfr here
+void starformation_and_feedback2(int p, int centralgal, double dt, int step);
 void starformation_and_feedback(int p, int centralgal, double dt, int step);
+// @@@@@@@@
+
 void add_galaxies_together(int t, int p, double mass_ratio, double *disc_mass_ratio, double *PostRetroGas);
 void init_galaxy(int p, int halonr);
 double infall_recipe(int centralgal, int ngal, double Zcurr);
