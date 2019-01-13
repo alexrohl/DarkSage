@@ -13,7 +13,7 @@
 void starformation_and_feedback(int p, int centralgal, double dt, int step)
 {
   //printf("original f here");
-  double strdot, stars, reheated_mass, ejected_mass, fac, metallicity, stars_sum, area, SFE_H2, f_H2_const, Sigma_0gas, DiscGasSum, DiscStarsSum, DiscPre, ColdPre;
+  double strdot, stars, reheated_mass, ejected_mass, fac, metallicity, metals_stars_sum, stars_sum, stars_angmom, area, SFE_H2, f_H2_const, Sigma_0gas, DiscGasSum, DiscStarsSum, DiscPre, ColdPre;
   double r_inner, r_outer;
   double reff, tdyn, cold_crit, strdotfull, H2sum; // For SFprescription==3
 
@@ -41,6 +41,9 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   strdot = 0.0;
   strdotfull = 0.0;
   stars_sum = 0.0;
+  metals_stars_sum = 0.0;
+    stars_angmom = 0.0;
+
 
   Gal[p].SfrDiskColdGas[step] = Gal[p].ColdGas;
   Gal[p].SfrDiskColdGasMetals[step] = Gal[p].MetalsColdGas; // I believe TAO wants these fields.  Otherwise irrelevant
@@ -58,12 +61,13 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
           strdotfull = SfrEfficiency * (Gal[p].ColdGas - cold_crit) / tdyn;
       
       H2sum = 0.0;
-      for(i=N_BINS-1; i>=0; i--) H2sum += Gal[p].DiscH2[i];
+      for(i=N_BINS-1; i>=0; i--) {H2sum += Gal[p].DiscH2[i];}
   }
 
   //MODULARISE
-    feedback(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, strdotfull);
-//MODULARISE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  //printf("starformation feedback\n");
+  feedback(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, stars_angmom, 0, 0.0, NewStarsMetals, 1);
+  //MODULARISE -----------------------------------------------
     
   double NewStarSum = 0.0;
   for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];

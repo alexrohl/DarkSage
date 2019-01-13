@@ -158,6 +158,7 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
         Q_gas = c_s * Kappa * (r_outer*r_outer - r_inner*r_inner) / G / (Gal[p].DiscGas[i]-SNgas[i]);
         if(!(Q_gas>0)) printf("c_s = %e, Kappa = %e, r_outer = %e, r_inner = %e, DiscGas = %e, SNgas = %e", c_s, Kappa, r_outer, r_inner, Gal[p].DiscGas[i], SNgas[i]);
         assert(Q_gas>0);
+        
         if(Q_gas < 0.99*Q_gas_min) printf("Q_gas final, min = %e, %e\n", Q_gas, Q_gas_min);
         assert(Q_gas >= 0.99*Q_gas_min);
         assert(Q_gas >= 0.99*QTotMin);
@@ -327,10 +328,12 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
 
 double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, double metallicity, int centralgal, double r_inner, double r_outer)
 {
+    //deals with single annulis and feeds in unstable gas amount, rotation vel, metallicity, inner/outer radius
 	double gas_sink, gas_sf;
 	double stars, reheated_mass, ejected_mass, Sigma_0gas, fac, area;
     double metallicity_new;
 	
+    //check
     if(unstable_gas > Gal[p].DiscGas[i])
         unstable_gas = Gal[p].DiscGas[i];
 
@@ -338,17 +341,21 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
     double j_lose, j_gain, m_up, m_down;
     
 	// Let gas sink -- one may well want to change this formula
+    //constant gas moving between discs
     gas_sink = GasSinkRate * unstable_gas;
     
     if(unstable_gas - gas_sink < MIN_STARFORMATION) // Not enough unstable gas to form stars
         gas_sink = unstable_gas;
     
+    //removing gas+metals
     Gal[p].DiscGas[i] -= gas_sink;
     Gal[p].DiscGasMetals[i] -= metallicity * gas_sink;
     
+    //remove
     Gal[p].TotSinkGas[i] += gas_sink;
     
     if(i==N_BINS-1)
+    //case where at the last annulis all gas is shifted inwards
     {
         Gal[p].DiscGas[i-1] += gas_sink;
         Gal[p].DiscGasMetals[i-1] += metallicity * gas_sink;
@@ -357,12 +364,17 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
     else // Conserve angular momentum while moving gas to restore stability
     {
         j_gain = (DiscBinEdge[i+2]-DiscBinEdge[i])/2.0;
+        //AVG angular momentum gained by gas shifted outward
         if(i==0)
+            //gas goes into black hole of 0 angular momentum
         {
             j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i])/2.0;
+            //AVG angular momentum lost by gas shifted inward
             m_up = j_lose / (j_gain + j_lose) * gas_sink;
             m_down = m_up * j_gain / j_lose;
+            //black hole mass added
             Gal[p].BlackHoleMass += m_down;
+            //remove mass
             Gal[p].ColdGas -= m_down;
             Gal[p].MetalsColdGas -= metallicity * m_down;
             assert(Gal[p].MetalsColdGas<=Gal[p].ColdGas);
@@ -383,92 +395,20 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
     }
 
 	// Calculate new stars formed in that annulus
+    //gas_sf is left over gas for star formation
 	gas_sf = unstable_gas - gas_sink;
-	stars = unstable_gas - gas_sink;
+    //no SN
+	stars = gas_sf;
+    //want stars + reheated = gas_sf
 	if(Gal[p].DiscGas[i] > 0.0 && stars > 0.0) // Quasar feedback could blow out the unstable gas
-	{
-    //MODULARISE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-		if(SupernovaRecipeOn>0)
-		{
-			area = M_PI * (r_outer*r_outer - r_inner*r_inner);
-            
-            if(SupernovaRecipeOn == 1)
-            {
-                Sigma_0gas = FeedbackGasSigma * (SOLAR_MASS / UnitMass_in_g) / sqr(CM_PER_MPC/1e6 / UnitLength_in_cm);
-                reheated_mass = FeedbackReheatingEpsilon * stars * pow(Sigma_0gas / (Gal[p].DiscGas[i]/area), FeedbackExponent);
-                
-                if(reheated_mass < MIN_STARFORMATION)
-                reheated_mass = 0.0;
-            }
-            else if(SupernovaRecipeOn == 2)
-                reheated_mass = FeedbackReheatingEpsilon * stars;
-            else
-                reheated_mass = 0.0;
-            assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
+    {
+//MODULARISE -------------------------------------
+        double fill[N_BINS];
+        recipe(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, ejected_mass, ejected_sum, reheated_mass, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
+    }
 
-			// Can't use more cold gas than is available, so balance SF and feedback
-		    if((stars + reheated_mass) > gas_sf && (stars + reheated_mass) > 0.0)
-		    {
-		    	fac = gas_sf / (stars + reheated_mass);
-		    	stars *= fac;
-		    	reheated_mass *= fac;
-                assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
-
-		    }
-		
-			if(stars<MIN_STARS_FOR_SN)
-		    {
-				if(gas_sf >= MIN_STARS_FOR_SN)
-				{
-		    		stars = MIN_STARS_FOR_SN;
-					reheated_mass = gas_sf - stars; // Previously had (1-RecycleFration)* in front of stars, which would have ensured all the unstable gas was removed in some way, but this would be inconsistent with what's done for the case that stars>MIN_STARS_FOR_SN.
-                    assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
-
-				}
-				else
-				{
-					stars = gas_sf;
-					reheated_mass = 0.0;
-				}
-				ejected_mass = 0.0;
-		    }
-			else
-			{
-                ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
-			    if(ejected_mass < MIN_STARFORMATION)
-			        ejected_mass = 0.0;
-			}
-		}
-		else
-		{
-			reheated_mass = 0.0;// not a great treatment right now
-			ejected_mass = 0.0;
-		}
-				
-        ejected_sum += ejected_mass;
-        
-	    update_from_star_formation(p, stars, metallicity, i);
-	
-		if(reheated_mass > Gal[p].DiscGas[i] && reheated_mass < 1.01*Gal[p].DiscGas[i])
-		  reheated_mass = Gal[p].DiscGas[i];
-		
-		metallicity_new = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
-		assert(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
-
-	    update_from_feedback(p, centralgal, reheated_mass, metallicity_new, i);
-
-        if(SupernovaRecipeOn>0 && stars>=MIN_STARS_FOR_SN)
-        {
-			Gal[p].DiscGasMetals[i] += Yield * stars*(1-metallicity);
-	    	Gal[p].MetalsColdGas += Yield * stars*(1-metallicity);
-		}
-	}
-    
-    update_from_ejection(p, centralgal, ejected_sum);
-//MODULARISE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	
 	return stars;
-		
+
 }
 
 
