@@ -50,12 +50,14 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
             reheated_mass = FeedbackReheatingEpsilon * stars;
         else
             reheated_mass = 0.0;
+            assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
         // Can't use more cold gas than is available, so balance SF and feedback
         if((stars + reheated_mass) > gas_sf && (stars + reheated_mass) > 0.0)
         {
             fac = gas_sf / (stars + reheated_mass);
             stars *= fac;
             reheated_mass *= fac;
+            assert(reheated_mass==reheated_mass && reheated_mass!=INFINITY);
         }
         
         if(stars<MIN_STARS_FOR_SN)
@@ -63,13 +65,13 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
             stars = MIN_STARS_FOR_SN;
             reheated_mass = gas_sf - stars; // Used to have (1-RecycleFraction)* in front of stars here, but changed philosophy
 
-            if(feedback_type == -1 && gas_sf >= MIN_STARS_FOR_SN) {
+            if(feedback_type == -1 && gas_sf < MIN_STARS_FOR_SN) {
                 stars = gas_sf;
                 reheated_mass = 0.0;
             }
             ejected_mass = 0.0;
         
-        if(reheated_mass < MIN_STARFORMATION)
+        if(feedback_type != -1 && reheated_mass < MIN_STARFORMATION)
             reheated_mass = 0.0; // Limit doesn't have to be the same as MIN_STARFORMATION, but needs to be something reasonable
         }
         
@@ -143,6 +145,7 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
     ColdPre = Gal[p].ColdGas;
         
     //need the new matallicity in the disk instabilty case
+    double metallicity_old = 1.0*metallicity;
     if (feedback_type == -1) {
         metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
     }
@@ -155,8 +158,12 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
     // Inject new metals from SN II
     if(SupernovaRecipeOn > 0 && stars >= MIN_STARS_FOR_SN)
     {
-        Gal[p].DiscGasMetals[i] += Yield * stars * (1.0 - get_metallicity(NewStars[i],NewStarsMetals[i])); // Could just use metallicity variable here, surely
-        Gal[p].MetalsColdGas += Yield * stars*(1.0 - get_metallicity(NewStars[i],NewStarsMetals[i]));
+        Gal[p].DiscGasMetals[i] += Yield * stars * (1.0 - metallicity_old); // Could just use metallicity variable here, surely
+        Gal[p].MetalsColdGas += Yield * stars*(1.0 - metallicity_old);
+    }
+    
+    if (feedback_type == -1){
+    update_from_ejection(p, centralgal, ejected_sum);
     }
     
     //angular momentem adjustments
