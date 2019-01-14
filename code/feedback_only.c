@@ -12,6 +12,8 @@
 //       0 : mergers
 //       1 : starform + feedback
 
+
+//recipe essentially deals with updating all the necessay fields.
 void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double strdot, fac, SFE_H2, f_H2_const, Sigma_0gas, DiscGasSum, DiscStarsSum, DiscPre, ColdPre;
@@ -70,6 +72,7 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
         if(reheated_mass < MIN_STARFORMATION)
             reheated_mass = 0.0; // Limit doesn't have to be the same as MIN_STARFORMATION, but needs to be something reasonable
         }
+        
         //equation already formed from energy arguents
         else {
             if (feedback_type != -1) {

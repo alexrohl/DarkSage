@@ -34,3 +34,5 @@ code/core_build_model_REMOTE_92425.c
 code/core_save.c.orig
 code/model_misc_old.c
 test
+millennium_mini/treedata
+core_io_tree-a381b18f.o.tmp

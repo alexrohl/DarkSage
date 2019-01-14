@@ -403,7 +403,6 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	if(Gal[p].DiscGas[i] > 0.0 && stars > 0.0) // Quasar feedback could blow out the unstable gas
     {
 //MODULARISE -------------------------------------
-        double fill[N_BINS];
         recipe(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, ejected_mass, ejected_sum, reheated_mass, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
     }
 
