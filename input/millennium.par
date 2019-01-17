@@ -43,7 +43,7 @@ PartMass			0.0860657
 SFprescription				0		;0: proportional to H2; 1: as 0 but all gas for low H2 fraction a la Fu et al 2010; 2: Threshold cold mass (closest to SAGE implementation)
 H2prescription              1       ;0: mid-plane pressure; 1: metallicity-dependent (McKee & Krumholz 2010)
 AGNrecipeOn					2		;0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
-SupernovaRecipeOn			1    	;0: switch off; 1: scale with local density; 2: uniform reheated fraction
+SupernovaRecipeOn			3    	;0: switch off; 1: scale with local density; 2: uniform reheated fraction; 3: new energy arguments
 ReionizationOn				1		;0: switch off
 DiskInstabilityOn			1		;0: switch off; 1: unstable mass moves through disc; 2: inner unstable stars straight to bulge
 GasPrecessionOn             1       ;0: switch off; 1: gas discs will precess to naturally come in line with stellar discs
@@ -74,6 +74,8 @@ FeedbackReheatingEpsilon    6.0
 FeedbackGasSigma            2.7     ; For SupernovaRecipeOn=1, scales SN feedback based on this density scale [h Msun/pc^2]
 FeedbackExponent            1.0    ; Exponent for scaled SN feedback (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  0.4
+
+EnergyDispersion 1.0
 
 ReIncorporationFactor		0.15    ; For ReincorpotationModel=0
 

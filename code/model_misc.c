@@ -463,6 +463,9 @@ void update_disc_radii(int p)
     
     X = log10(Gal[p].StellarMass/Gal[p].Mvir);
     
+    
+    //R_s on wiki -> r_2 here!
+    //p_o central density of profile.
     z = ZZ[Gal[p].SnapNum];
     if(z>5.0) z=5.0;
     a = 0.520 + (0.905-0.520)*exp_f(-0.617*pow(z,1.21)); // Dutton & Maccio 2014

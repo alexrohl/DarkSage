@@ -160,6 +160,10 @@ void read_parameter_file(char *fname)
   strcpy(tag[nt], "BaryonFrac");
   addr[nt] = &BaryonFrac;
   id[nt++] = DOUBLE;
+    
+    strcpy(tag[nt], "EnergyDispersion");
+    addr[nt] = &EnergyDispersion;
+    id[nt++] = DOUBLE;
 
   strcpy(tag[nt], "Omega");
   addr[nt] = &Omega;

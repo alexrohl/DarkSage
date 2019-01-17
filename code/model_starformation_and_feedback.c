@@ -13,8 +13,7 @@
 void starformation_and_feedback(int p, int centralgal, double dt, int step)
 {
   //printf("original f here");
-  double strdot, stars, reheated_mass, ejected_mass, fac, metallicity, metals_stars_sum, stars_sum, stars_angmom, area, SFE_H2, f_H2_const, Sigma_0gas, DiscGasSum, DiscStarsSum, DiscPre, ColdPre;
-  double r_inner, r_outer;
+    double strdot, reheated_mass, metals_stars_sum, stars_sum, stars_angmom, SFE_H2, f_H2_const, DiscGasSum, DiscStarsSum;
   double reff, tdyn, cold_crit, strdotfull, H2sum; // For SFprescription==3
 
   double NewStars[N_BINS], NewStarsMetals[N_BINS];

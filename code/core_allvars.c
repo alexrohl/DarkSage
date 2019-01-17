@@ -79,6 +79,7 @@ double CoolingScaleSlope;
 double CoolingScaleConst;
 double ThreshMajorMerger;
 double BaryonFrac;
+double EnergyDispersion;
 double SfrEfficiency;
 double FeedbackReheatingEpsilon;
 double FeedbackGasSigma;

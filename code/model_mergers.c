@@ -634,17 +634,14 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
 {
     //disc_mass_ratio --> array of frac of gas in annulis from original galaxy vs merging galaxy
     //mode --> always zero
- double stars, reheated_mass, ejected_mass, fac, metallicity, CentralVvir, eburst, Sigma_0gas, area, stars_sum, metals_stars, stars_angmom;
- double r_inner, r_outer, j_bin;
+ double reheated_mass, CentralVvir, eburst, stars_sum, stars_angmom;
  double NewStars[N_BINS], NewStarsMetals[N_BINS], strdotfull;
- int k, s;
+ int s;
 
  // This is the major and minor merger starburst recipe of Somerville et al. 2001. 
  // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more 
  // accurate then previous. The recipe has been modified to function for each annulus.
-    
-    double ejected_sum = 0.0;
-    double metals_stars_sum = 0.0;
+double metals_stars_sum = 0.0;
 
  stars_sum = 0.0;
  stars_angmom = 0.0;

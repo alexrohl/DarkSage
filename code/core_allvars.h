@@ -54,7 +54,7 @@ struct GALAXY_OUTPUT
   int   mergeIntoSnapNum;
   float   dT;
 
-  // properties of subhalo at the last time this galaxy was a central galaaxy 
+  // properties of subhalo at the last time this galaxy was a central galaxy
   float Pos[3];
   float Vel[3];
   float Spin[3];
@@ -340,6 +340,7 @@ extern double CoolingScaleSlope;
 extern double CoolingScaleConst;
 extern double ThreshMajorMerger;
 extern double BaryonFrac;
+extern double EnergyDispersion;
 extern double SfrEfficiency;
 extern double FeedbackReheatingEpsilon;
 extern double FeedbackGasSigma;

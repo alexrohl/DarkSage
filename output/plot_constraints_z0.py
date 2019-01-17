@@ -11,7 +11,9 @@ warnings.filterwarnings("ignore")
 
 
 ###### USER NEEDS TO SET THESE THINGS ######
+dir_name = raw_input() #if null then default
 indir = 'results/millennium/' # directory where the Dark Sage data are
+
 sim = 0 # which simulation Dark Sage has been run on -- if it's new, you will need to set its defaults below.
 #   0 = Mini Millennium, 1 = Full Millennium, 2 = SMDPL
 
@@ -56,7 +58,12 @@ matplotlib.rcParams.update({'font.size': fsize, 'xtick.major.size': 10, 'ytick.m
 
 NpartMed = 100 # minimum number of particles for finding relevant medians for minima on plots
 
-outdir = indir+'plots/' # where the plots will be saved
+if dir_name != '':
+    outdir = indir+dir_name+'/' # where the plots will be saved
+else:
+    outdir = indir + 'plots/'
+
+
 if not os.path.exists(outdir): os.makedirs(outdir)
 ######  =================== #####
 
