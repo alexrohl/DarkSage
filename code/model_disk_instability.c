@@ -387,6 +387,10 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	stars = unstable_gas - gas_sink;
 	if(Gal[p].DiscGas[i] > 0.0 && stars > 0.0) // Quasar feedback could blow out the unstable gas
 	{
+        recipe(p, centralgal, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
+    }
+
+        /*
 		if(SupernovaRecipeOn>0)
 		{
 			area = M_PI * (r_outer*r_outer - r_inner*r_inner);
@@ -464,7 +468,8 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	}
     
     update_from_ejection(p, centralgal, ejected_sum);
-	
+	*/
+    printf("Stars: %f\n", stars);
 	return stars;
 		
 }

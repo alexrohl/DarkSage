@@ -64,19 +64,19 @@ double CalcRho_0(double r_2, int p) {
 void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
-    double r_inner, r_outer, area, j_bin;
+    double r_inner, r_outer, r_av, area, j_bin;
     check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
+    r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
     area = M_PI * (r_outer*r_outer - r_inner*r_inner);
     
     //gas_sf will simply read Gal[p].DiscGas[i]
     //for mergers and passive star formation only
-    
     //V_rot is simply Gal[centralgal].Vvir
     
     //supernoveRecipeOn>0 -> stellar feedback
-    if(SupernovaRecipeOn > 0 && Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN) //so we have enough mass to make supernovas
+    if(SupernovaRecipeOn > 0 && ((Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN) || feedback_type == -1)) //so we have enough mass to make supernovas
     {
         if(SupernovaRecipeOn == 1)
             //uses equation in the paper for supernova feedback
@@ -93,7 +93,7 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
             //uniform reheated fraction
             reheated_mass = FeedbackReheatingEpsilon * stars;
             
-        } else if(SupernovaRecipeOn == 3 && Gal[p].Mvir >0) { //new case with energy arguments
+        } else if(SupernovaRecipeOn == 3) { //new case with energy arguments
             /*
                 c2h -> cold to hot     h2e -> hot to ejected
              
@@ -238,15 +238,15 @@ void recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS],
     }
         
     // Update from SN feedback
-    if(reheated_mass > 0.0)
+    if(reheated_mass > 0.0 || feedback_type == -1)
         update_from_feedback(p, centralgal, reheated_mass, metallicity, i);
     //^ taking reheated gas out of disc and into the hot gas halo
     
     // Inject new metals from SN II
     if(SupernovaRecipeOn > 0 && stars >= MIN_STARS_FOR_SN)
     {
-        Gal[p].DiscGasMetals[i] += Yield * stars * (1.0 - metallicity_old);
-        Gal[p].MetalsColdGas += Yield * stars * (1.0 - metallicity_old);
+        Gal[p].DiscGasMetals[i] += Yield * stars * (1.0 - metallicity);
+        Gal[p].MetalsColdGas += Yield * stars * (1.0 - metallicity);
     }
     
     if (feedback_type == -1) {//updating masses after ejection
