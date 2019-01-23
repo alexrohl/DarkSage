@@ -270,7 +270,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
 
 void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double stars_angmom, int mode, double eburst, double disc_mass_ratio[N_BINS], int feedback_type)
 {
-    double strdot, stars, reheated_mass, ejected_mass, metallicity, area, SFE_H2, f_H2_const, DiscPre, ColdPre;
+    double strdot, stars, reheated_mass, ejected_mass, metallicity, area, SFE_H2, f_H2_const, DiscPre, ColdPre, DiscGasSum;
     int i;
     double StarsPre = Gal[p].StellarMass;
     check_channel_stars(p);
@@ -335,11 +335,38 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
         }
         
         //Calls recipe for each disk,
-        recipe(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, ejected_mass, ejected_sum, reheated_mass, metallicity, stars_angmom, i, stars, feedback_type, Gal[p].DiscGas[i], Gal[centralgal].Vvir);
+        struct RecipeOutput output = recipe(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, ejected_mass, ejected_sum, reheated_mass, metallicity, stars_angmom, i, stars, feedback_type, Gal[p].DiscGas[i], Gal[centralgal].Vvir);
+        
+        stars = output.stars;
     }
     if(ejected_sum>0.0) {//updating masses after ejection
         update_from_ejection(p, centralgal, ejected_sum);
     }
+    
+    double NewStarSum = 0.0;
+    for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
+    
+    // Sum stellar discs together
+    if(NewStarSum>0.0)
+        combine_stellar_discs(p, NewStars, NewStarsMetals);
+    
+    // Update the star formation rate
+    Gal[p].SfrFromH2[step] += stars_sum / dt;
+    Gal[p].StarsFromH2 += NewStarSum;
+    
+    if(Gal[p].StellarMass >= MIN_STARS_FOR_SN)
+    {
+        check_channel_stars(p);
+        assert(Gal[p].StellarMass >= (StarsPre + NewStarSum)/1.01 && Gal[p].StellarMass <= (StarsPre + NewStarSum)*1.01);
+    }
+    
+    
+    DiscGasSum = get_disc_gas(p);
+    assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
+    assert(Gal[centralgal].HotGas >= Gal[centralgal].MetalsHotGas);
+
+    
+    
     return;
 }
 

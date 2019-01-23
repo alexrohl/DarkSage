@@ -57,6 +57,10 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
       H2sum = 0.0;
       for(i=N_BINS-1; i>=0; i--) H2sum += Gal[p].DiscH2[i];
   }
+    
+//Modularise!
+//Given int p, int centralgal, double dt, int step)
+   // feedback(p, centralgal, dt, step, 0, 0, stars_sum, 0.0, strdotfull, 0.0, 0, 0.0, 0, 1);
 
   for(i=0; i<N_BINS; i++)
   {
