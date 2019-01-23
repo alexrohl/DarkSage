@@ -61,7 +61,7 @@ double CalcRho_0(double r_2, int p) {
  */
 
 //recipe essentially deals with updating all the necessay fields.
-double recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
+struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
     double r_inner, r_outer, r_av, area, j_bin;
@@ -262,7 +262,8 @@ double recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS
             stars_angmom += stars * j_bin;
         }
     }
-    return stars;
+    struct RecipeOutput output = {stars};
+    return output;
 }
 
     

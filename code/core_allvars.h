@@ -37,6 +37,12 @@ do {                                                                \
 #define MIN_STARS_FOR_SN 1e-8
 #define MIN_STARFORMATION 1e-10
 
+struct RecipeOutput
+{
+    double stars;
+};
+
+
 struct GALAXY_OUTPUT  
 {
   int   Type;
