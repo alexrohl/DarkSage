@@ -64,7 +64,7 @@ double CalcRho_0(double r_2, int p) {
 struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
-    double r_inner, r_outer, r_av, area, j_bin;
+    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_dispersion, energy_out;
     //check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
@@ -77,6 +77,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
     //supernoveRecipeOn>0 -> stellar feedback
     if(SupernovaRecipeOn > 0 && ((Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN) || feedback_type == -1)) //so we have enough mass to make supernovas
     {
+        double check = Gal[p].DiscGas[i] * V_rot * Gal[p].HotGas * r_outer * Gal[p].Rvir * Gal[p].Mvir;
+
         if(SupernovaRecipeOn == 1)
             //uses equation in the paper for supernova feedback
         {
@@ -92,52 +94,49 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             //uniform reheated fraction
             reheated_mass = FeedbackReheatingEpsilon * stars;
             
-        } else if(SupernovaRecipeOn == 3) { //new case with energy arguments
-            /*
-                c2h -> cold to hot     h2e -> hot to ejected
-             
-                e_in = e_supernovae = 1/2 * 630km/s ^2 * mass_stars_formed
-                e_out = e_c2h + e_h2e
-                related by
-                    e_in = free_epsilon1 * e_out &&
-                    EonM_cold = 0.5 * (v'/r)^2
-                    EonM_hot = 0.5 * V_vir^2
-                    E_h2e = M * gravity_well
-             
-             %-------------- Units, son! ---------------
+        } else if(SupernovaRecipeOn == 3 && check != 0) { //new case
+             /* %-------------- Units, son! ---------------
              %------------------------------------------
              UnitLength_in_cm            3.08568e+24        ;WATCH OUT: Mpc/h
              UnitMass_in_g                1.989e+43        ;WATCH OUT: 10^10Msun/h
              UnitVelocity_in_cm_per_s    100000            ;WATCH OUT: km/s
             */
             
-            double energy_efficiency = 0.3;   //energy_out/energy_in
-            //EnergyDispersion in ParamFile defined as energy_h2e/energy_c2h
+            double energy_efficiency = 0.7;   //energy_out/energy_in
             
             double energy_in =  0.5 * 630 * 630 * stars;
                                 //e_SN, Croton et al. pg8
             double energy_out = energy_efficiency * energy_in;
             
             //Energy per unit mass for each state: Cold, Hot, Ejected
-            assert(V_rot>0);
-            assert(Gal[p].Rvir>0);
             double energy_perunit_coldmass =
-                0.5 * (V_rot*r_outer/Gal[p].Rvir) * (V_rot*r_outer/Gal[p].Rvir) + NFW_profile((r_outer+r_inner)/2, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
+                0.5 * (V_rot*r_av/Gal[p].Rvir) * (V_rot*r_av/Gal[p].Rvir)
+                + NFW_profile(r_av, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
             
-            double r_hot = 0.5 * Gal[p].HotGas * Gal[p].Rvir;
+            double r_hot = 0.5 * Gal[p].Rvir;
             double energy_perunit_hotmass =
-                0.5 * V_rot * V_rot + NFW_profile((r_hot)/2, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
+                0.5 * V_rot * V_rot
+                + NFW_profile(r_hot, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
             
             double energy_perunit_ejectedmass =
-                Gal[p].HotGas * 0.5 * V_rot * V_rot + NFW_profile(Gal[p].Rvir, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
+                Gal[p].HotGas * 0.5 * V_rot * V_rot
+                + NFW_profile(Gal[p].Rvir, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
             
-            assert(energy_perunit_hotmass>energy_perunit_coldmass);
+            //assert(energy_perunit_hotmass>energy_perunit_coldmass);
+            
+            //Find the energy required to move between states
             double energy_c2h = energy_perunit_hotmass - energy_perunit_coldmass;
             double energy_h2e = energy_perunit_ejectedmass - energy_perunit_hotmass;
+            double energy_dispersion = 0.8; //% of energy moving cold to hot
             
-            reheated_mass = energy_out/energy_c2h;
+            if (energy_c2h>0)   {
+                reheated_mass = energy_out/energy_c2h;
+            } else {
+                reheated_mass = gas_sf;
+                printf("high potential energy cold gas here, radius ratio: %f, reheat/stars ratio: %f\n",r_av/Gal[p].Rvir,reheated_mass/stars);
+            }
             //assert(reheated_mass < Gal[p].DiscGas[i]);
-            //printf("DiscGas: %f, Stars: %f, ReheatedMass: %f, EnergyC2h: %f\n", gas_sf, stars, reheated_mass, energy_c2h);
+            //printf("DiscGas: %f, Stars: %f, ReheatedMass: %f,EnergyOut: %f, EnergyC2h: %f\n", gas_sf, stars, reheated_mass,energy_out, energy_c2h);
             
         } else {
             reheated_mass = 0.0;
@@ -146,6 +145,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         // Can't use more cold gas than is available, so balance SF and feedback
         if((stars + reheated_mass) > gas_sf && (stars + reheated_mass) > 0.0)
         {
+            //printf("feedback: %d, reheatedmass: %f\n", feedback_type, reheated_mass);
             fac = gas_sf / (stars + reheated_mass);
             stars *= fac;
             reheated_mass *= fac;
@@ -170,7 +170,12 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         
         //equation already formed from energy arguents
         else {
-             ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
+            if (SupernovaRecipeOn != 4) {
+                ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
+            } else {
+                //new ejected_mass argument
+                ejected_mass = fac*(1-energy_dispersion)*energy_out/energy_h2e;
+            }
         }
         
         if(ejected_mass < MIN_STARFORMATION) {

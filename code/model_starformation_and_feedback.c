@@ -316,7 +316,7 @@ void update_from_feedback(int p, int centralgal, double reheated_mass, double me
     }
   }
 
-  assert(Gal[centralgal].MetalsHotGas <= Gal[centralgal].HotGas);
+  //assert(Gal[centralgal].MetalsHotGas <= Gal[centralgal].HotGas);
 
   if(Gal[p].DiscGas[i] <= 0.0)
   {
