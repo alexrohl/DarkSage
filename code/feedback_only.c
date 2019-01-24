@@ -359,28 +359,52 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
     if(ejected_sum>0.0) {//updating masses after ejection
         update_from_ejection(p, centralgal, ejected_sum);
     }
+    if (feedback_type == 1) {
+        double NewStarSum = 0.0;
+        for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
+        //printf("NewStarSum: %f\n",NewStarSum);
+        // Sum stellar discs together
+        if(NewStarSum>0.0)
+            combine_stellar_discs(p, NewStars, NewStarsMetals);
     
-    double NewStarSum = 0.0;
-    for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
-    printf("NewStarSum: %f\n",NewStarSum);
-    // Sum stellar discs together
-    if(NewStarSum>0.0)
-        combine_stellar_discs(p, NewStars, NewStarsMetals);
+        // Update the star formation rate
+        Gal[p].SfrFromH2[step] += stars_sum / dt;
+        Gal[p].StarsFromH2 += NewStarSum;
     
-    // Update the star formation rate
-    Gal[p].SfrFromH2[step] += stars_sum / dt;
-    Gal[p].StarsFromH2 += NewStarSum;
+        if(Gal[p].StellarMass >= MIN_STARS_FOR_SN)
+        {
+            check_channel_stars(p);
+            assert(Gal[p].StellarMass >= (StarsPre + NewStarSum)/1.01 && Gal[p].StellarMass <= (StarsPre + NewStarSum)*1.01);
+        }
     
-    if(Gal[p].StellarMass >= MIN_STARS_FOR_SN)
-    {
-        check_channel_stars(p);
-        assert(Gal[p].StellarMass >= (StarsPre + NewStarSum)/1.01 && Gal[p].StellarMass <= (StarsPre + NewStarSum)*1.01);
+        DiscGasSum = get_disc_gas(p);
+        assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
+        assert(Gal[centralgal].HotGas >= Gal[centralgal].MetalsHotGas);
     }
-    
-    DiscGasSum = get_disc_gas(p);
-    assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
-    assert(Gal[centralgal].HotGas >= Gal[centralgal].MetalsHotGas);
-
+    else if (feedback_type == 0) {
+        int merger_centralgal = p;
+        if(stars_sum>0)
+        {
+            // Update bulge spin
+            int s;
+            for(s=0; s<3; s++)
+            {
+                Gal[merger_centralgal].SpinClassicalBulge[s] = (Gal[merger_centralgal].SpinClassicalBulge[s]*Gal[merger_centralgal].ClassicalBulgeMass + Gal[merger_centralgal].SpinGas[s]*stars_angmom) / (Gal[merger_centralgal].ClassicalBulgeMass+stars_sum);
+                assert(Gal[merger_centralgal].SpinClassicalBulge[s] == Gal[merger_centralgal].SpinClassicalBulge[s] && Gal[merger_centralgal].SpinClassicalBulge[s] != INFINITY && Gal[merger_centralgal].SpinClassicalBulge[s] != -INFINITY);
+            }
+            
+            // Now adding all new stars directly to the bulge
+            Gal[merger_centralgal].StellarMass += stars_sum; // Recycling fraction already taken into account when adding to stars_sum etc above
+            Gal[merger_centralgal].ClassicalBulgeMass += stars_sum;
+            Gal[merger_centralgal].MetalsStellarMass += metals_stars_sum;
+            Gal[merger_centralgal].ClassicalMetalsBulgeMass += metals_stars_sum;
+        }
+        
+        Gal[merger_centralgal].SfrMerge[step] += stars_sum / dt;
+        Gal[merger_centralgal].StarsMergeBurst += stars_sum;
+        
+        check_channel_stars(merger_centralgal);
+    }
     return;
 }
 

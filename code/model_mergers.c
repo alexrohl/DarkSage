@@ -654,7 +654,11 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
   // update the star formation rate 
   Gal[merger_centralgal].SfrBulgeColdGas[step] += Gal[merger_centralgal].ColdGas;
   Gal[merger_centralgal].SfrBulgeColdGasMetals[step] += Gal[merger_centralgal].MetalsColdGas;
-
+     
+//Modularised Here
+double fill[N_BINS];
+feedback(merger_centralgal, centralgal, dt, step, fill, fill, stars_sum, metals_stars_sum, 0.0, stars_angmom, mode, eburst, disc_mass_ratio, 0);
+/*
   for(k=0; k<N_BINS; k++)
   {
       if(disc_mass_ratio[k] > 1.0 || disc_mass_ratio[k]!=disc_mass_ratio[k]) printf("i, disc_mass_ratio[i] = %d, %e\n", k, disc_mass_ratio[k]);
@@ -770,7 +774,7 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
      
   if(ejected_sum>0.0)
       update_from_ejection(merger_centralgal, centralgal, ejected_sum);
-     
+
   if(stars_sum>0)
   {
      // Update bulge spin
@@ -791,6 +795,7 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
   Gal[merger_centralgal].StarsMergeBurst += stars_sum;
      
   check_channel_stars(merger_centralgal);
+     */
  }
 }
 
