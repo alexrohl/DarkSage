@@ -16,7 +16,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   double r_inner, r_outer;
   double reff, tdyn, cold_crit, strdotfull, H2sum; // For SFprescription==3
 
-  double NewStars[N_BINS], NewStarsMetals[N_BINS];
+  double NewStars[N_BINS], NewStarsMetals[N_BINS], metals_stars_sum, stars_angmom;
   int i;
 
   double StarsPre = Gal[p].StellarMass;
@@ -60,8 +60,8 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
     
 //Modularise!
 //Given int p, int centralgal, double dt, int step)
-   // feedback(p, centralgal, dt, step, 0, 0, stars_sum, 0.0, strdotfull, 0.0, 0, 0.0, 0, 1);
-
+    feedback(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, stars_angmom, 0, 0.0, NewStarsMetals, 1);
+/*
   for(i=0; i<N_BINS; i++)
   {
 	if(Gal[p].DiscStarsMetals[i] > Gal[p].DiscStars[i]) printf("DiscStars, Metals = %e, %e\n", Gal[p].DiscStars[i], Gal[p].DiscStarsMetals[i]);
@@ -208,7 +208,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   }
 
   update_from_ejection(p, centralgal, ejected_sum);
-    
+
   double NewStarSum = 0.0;
   for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
     
@@ -230,7 +230,7 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
   DiscGasSum = get_disc_gas(p);
   assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
   assert(Gal[centralgal].HotGas >= Gal[centralgal].MetalsHotGas);
-
+*/
 }
 
 

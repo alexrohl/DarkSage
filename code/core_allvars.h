@@ -40,6 +40,9 @@ do {                                                                \
 struct RecipeOutput
 {
     double stars;
+    double ejected;
+    double NewStarsDisk;
+    double NewMetalsDisk;
 };
 
 

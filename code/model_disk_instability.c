@@ -330,6 +330,7 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	double gas_sink, gas_sf;
 	double stars, reheated_mass, ejected_mass, Sigma_0gas, fac, area;
     double metallicity_new;
+    double fill[N_BINS];
 	
     if(unstable_gas > Gal[p].DiscGas[i])
         unstable_gas = Gal[p].DiscGas[i];
@@ -387,7 +388,8 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	stars = unstable_gas - gas_sink;
 	if(Gal[p].DiscGas[i] > 0.0 && stars > 0.0) // Quasar feedback could blow out the unstable gas
 	{
-        struct RecipeOutput output = recipe(p, centralgal, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
+        //recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
+        struct RecipeOutput output = recipe(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
         stars = output.stars;
     }
 	return stars;

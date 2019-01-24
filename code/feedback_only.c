@@ -70,11 +70,10 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
     r_outer = Gal[p].DiscRadii[i+1];
     r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
     area = M_PI * (r_outer*r_outer - r_inner*r_inner);
-    
+    //printf("feedback type: %d, %f, %f, %f, %f\n", feedback_type, stars, stars_sum, ejected_mass, ejected_sum);
     //gas_sf will simply read Gal[p].DiscGas[i]
     //for mergers and passive star formation only
     //V_rot is simply Gal[centralgal].Vvir
-    
     //supernoveRecipeOn>0 -> stellar feedback
     if(SupernovaRecipeOn > 0 && ((Gal[p].DiscGas[i] > 0.0 && stars>MIN_STARS_FOR_SN) || feedback_type == -1)) //so we have enough mass to make supernovas
     {
@@ -144,7 +143,6 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             reheated_mass = 0.0;
             assert(reheated_mass == reheated_mass && reheated_mass != INFINITY);
         }
-        
         // Can't use more cold gas than is available, so balance SF and feedback
         if((stars + reheated_mass) > gas_sf && (stars + reheated_mass) > 0.0)
         {
@@ -262,7 +260,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             stars_angmom += stars * j_bin;
         }
     }
-    struct RecipeOutput output = {stars};
+    struct RecipeOutput output = {stars, ejected_mass, NewStars[i], NewStarsMetals[i]};
+    //printf("ejected: %f, stars: %f\n", ejected_mass, stars);
     return output;
 }
 
@@ -270,19 +269,26 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
 
 void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double stars_angmom, int mode, double eburst, double disc_mass_ratio[N_BINS], int feedback_type)
 {
+    //struct RecipeOutput output = recipe(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, ejected_mass, ejected_sum, reheated_mass, metallicity, stars_angmom, i, stars, feedback_type, Gal[p].DiscGas[i], Gal[centralgal].Vvir);
     double strdot, stars, reheated_mass, ejected_mass, metallicity, area, SFE_H2, f_H2_const, DiscPre, ColdPre, DiscGasSum;
     int i;
     double StarsPre = Gal[p].StellarMass;
     check_channel_stars(p);
-    
+    f_H2_const = 1.38e-3 * pow((CM_PER_MPC*CM_PER_MPC/1e12 / SOLAR_MASS) * (UnitMass_in_g / UnitLength_in_cm / UnitLength_in_cm), 2.0*H2FractionExponent);
+    SFE_H2 = 7.75e-4 * UnitTime_in_s / SEC_PER_MEGAYEAR; // This says if SfrEfficiency==1.0, then the true efficiency of SF from H2 is 7.75e-4 h Myr^-1
     double ejected_sum = 0.0;
     double gas_sf = 0.0;
     reheated_mass = 0.0; // initialise
     strdot = 0.0;
+    ejected_sum = 0.0;
+    stars_sum = 0.0;
     
     // Loops through annuli
     for(i=0; i<N_BINS; i++)
     {
+        double r_inner = Gal[p].DiscRadii[i];
+        double r_outer = Gal[p].DiscRadii[i+1];
+        area = M_PI * (r_outer*r_outer - r_inner*r_inner);
         if (feedback_type == 1)
         {
             if(Gal[p].Vvir>0) //test purposes
@@ -333,12 +339,18 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
             if(stars > Gal[p].DiscGas[i])
                 stars = Gal[p].DiscGas[i];
         }
-        
+        //printf("stars init: %f\n", stars);
         //Calls recipe for each disk,
         struct RecipeOutput output = recipe(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, ejected_mass, ejected_sum, reheated_mass, metallicity, stars_angmom, i, stars, feedback_type, Gal[p].DiscGas[i], Gal[centralgal].Vvir);
         
-        stars = output.stars;
+        //printf("ejected2: %f, stars2: %f\n", output.ejected, output.stars);
+        stars = 1.0*output.stars;
+        stars_sum += stars;
+        ejected_sum += 1.0*output.ejected;
+        NewStars[i] = 1.0*output.NewStarsDisk;
+        NewStarsMetals[i] = 1.0*output.NewMetalsDisk;
     }
+    printf("Ejected Sum: %f, Stars Sum: %f\n", ejected_sum, stars_sum);
     if(ejected_sum>0.0) {//updating masses after ejection
         update_from_ejection(p, centralgal, ejected_sum);
     }
@@ -365,8 +377,6 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
     assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
     assert(Gal[centralgal].HotGas >= Gal[centralgal].MetalsHotGas);
 
-    
-    
     return;
 }
 
