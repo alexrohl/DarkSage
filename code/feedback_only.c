@@ -65,7 +65,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
     double r_inner, r_outer, r_av, area, j_bin;
-    check_channel_stars(p);
+    //check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
     r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
@@ -231,7 +231,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         
     //need the new matallicity in the disk instabilty case
     double metallicity_old = 1.0*metallicity;
-    if (feedback_type == -1) {
+    if (feedback_type != 0) {
         metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
     }
         
@@ -241,6 +241,9 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
     //^ taking reheated gas out of disc and into the hot gas halo
     
     // Inject new metals from SN II
+    if (feedback_type == 1) {
+        metallicity = get_metallicity(NewStars[i],NewStarsMetals[i]);
+    }
     if(SupernovaRecipeOn > 0 && stars >= MIN_STARS_FOR_SN)
     {
         Gal[p].DiscGasMetals[i] += Yield * stars * (1.0 - metallicity);
@@ -289,6 +292,7 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
         double r_inner = Gal[p].DiscRadii[i];
         double r_outer = Gal[p].DiscRadii[i+1];
         area = M_PI * (r_outer*r_outer - r_inner*r_inner);
+        
         if (feedback_type == 1)
         {
             if(Gal[p].Vvir>0) //test purposes
@@ -350,14 +354,15 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
         NewStars[i] = 1.0*output.NewStarsDisk;
         NewStarsMetals[i] = 1.0*output.NewMetalsDisk;
     }
-    printf("Ejected Sum: %f, Stars Sum: %f\n", ejected_sum, stars_sum);
+    //printf("Ejected Sum: %f, Stars Sum: %f\n", ejected_sum, stars_sum);
+    
     if(ejected_sum>0.0) {//updating masses after ejection
         update_from_ejection(p, centralgal, ejected_sum);
     }
     
     double NewStarSum = 0.0;
     for(i=N_BINS-1; i>=0; i--) NewStarSum += NewStars[i];
-    
+    printf("NewStarSum: %f\n",NewStarSum);
     // Sum stellar discs together
     if(NewStarSum>0.0)
         combine_stellar_discs(p, NewStars, NewStarsMetals);
@@ -371,7 +376,6 @@ void feedback(int p, int centralgal, double dt, int step, double NewStars[N_BINS
         check_channel_stars(p);
         assert(Gal[p].StellarMass >= (StarsPre + NewStarSum)/1.01 && Gal[p].StellarMass <= (StarsPre + NewStarSum)*1.01);
     }
-    
     
     DiscGasSum = get_disc_gas(p);
     assert(DiscGasSum <= 1.01*Gal[p].ColdGas && DiscGasSum >= Gal[p].ColdGas/1.01);
