@@ -64,7 +64,7 @@ double CalcRho_0(double r_2, int p) {
 struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
-    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_dispersion, energy_out;
+    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_dispersion, energy_out, energy_c2h;
     //check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
@@ -133,7 +133,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
                 reheated_mass = energy_out/energy_c2h;
             } else {
                 reheated_mass = gas_sf;
-                printf("high potential energy cold gas here, radius ratio: %f, reheat/stars ratio: %f\n",r_av/Gal[p].Rvir,reheated_mass/stars);
+                //printf("high potential energy cold gas here, radius ratio: %f, reheat/stars ratio: %f\n",r_av/Gal[p].Rvir,reheated_mass/stars);
             }
             //assert(reheated_mass < Gal[p].DiscGas[i]);
             //printf("DiscGas: %f, Stars: %f, ReheatedMass: %f,EnergyOut: %f, EnergyC2h: %f\n", gas_sf, stars, reheated_mass,energy_out, energy_c2h);
@@ -150,6 +150,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             stars *= fac;
             reheated_mass *= fac;
             assert(reheated_mass == reheated_mass && reheated_mass != INFINITY);
+            energy_excess = fac*energy_out - reheated_mass * energy_c2h;
         }
         
         if(stars<MIN_STARS_FOR_SN)
@@ -170,12 +171,18 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         
         //equation already formed from energy arguents
         else {
-            if (SupernovaRecipeOn != 4) {
+            if (SupernovaRecipeOn != 3) {
                 ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
             } else {
                 //new ejected_mass argument
-                ejected_mass = fac*(1-energy_dispersion)*energy_out/energy_h2e;
+                ejected_mass = energy_excess/energy_h2e;
+                if (ejected_mass > Gal[p].HotGas) {
+                    printf("too much ejected");
+                    ejected_mass = Gal[p].HotGas;
+                }
             }
+            //printf("EjectedMASS1: %f, EjectedMASS2: %f\n",ejected_mass, ejected_mass2);
+            
         }
         
         if(ejected_mass < MIN_STARFORMATION) {
