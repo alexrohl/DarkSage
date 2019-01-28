@@ -64,7 +64,7 @@ double CalcRho_0(double r_2, int p) {
 struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
-    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_dispersion, energy_out, energy_c2h;
+    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_efficiency2, energy_out, energy_c2h;
     //check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
@@ -102,7 +102,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
              UnitVelocity_in_cm_per_s    100000            ;WATCH OUT: km/s
             */
             
-            double energy_efficiency = 0.7;   //energy_out/energy_in
+            double energy_efficiency = 0.2;   //energy_out/energy_in
+            double energy_efficiency2 = 0.2; //proportion of excess energy going into ejecting gas
             
             double energy_in =  0.5 * 630 * 630 * stars;
                                 //e_SN, Croton et al. pg8
@@ -169,19 +170,15 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             }
         }
         
-        //equation already formed from energy arguents
+        
         else {
+            //equation already formed from energy arguents
             if (SupernovaRecipeOn != 3) {
                 ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
             } else {
                 //new ejected_mass argument
-                ejected_mass = energy_excess/energy_h2e;
-                if (ejected_mass > Gal[p].HotGas) {
-                    printf("too much ejected");
-                    ejected_mass = Gal[p].HotGas;
-                }
+                ejected_mass = energy_efficiency2 * (gas_sf/Gal[p].HotGas) * (energy_excess/energy_h2e);
             }
-            //printf("EjectedMASS1: %f, EjectedMASS2: %f\n",ejected_mass, ejected_mass2);
             
         }
         
