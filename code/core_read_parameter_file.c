@@ -192,7 +192,15 @@ void read_parameter_file(char *fname)
   strcpy(tag[nt], "SfrEfficiency");
   addr[nt] = &SfrEfficiency;
   id[nt++] = DOUBLE;
+    
+    strcpy(tag[nt], "EnergyEfficiencyC2H");
+    addr[nt] = &EnergyEfficiencyC2H;
+    id[nt++] = DOUBLE;
 
+    strcpy(tag[nt], "EnergyEfficiencyH2E");
+    addr[nt] = &EnergyEfficiencyH2E;
+    id[nt++] = DOUBLE;
+    
   strcpy(tag[nt], "FeedbackReheatingEpsilon");
   addr[nt] = &FeedbackReheatingEpsilon;
   id[nt++] = DOUBLE;

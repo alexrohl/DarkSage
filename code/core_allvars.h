@@ -350,6 +350,8 @@ extern double CoolingScaleConst;
 extern double ThreshMajorMerger;
 extern double BaryonFrac;
 extern double SfrEfficiency;
+extern double EnergyEfficiencyC2H;
+extern double EnergyEfficiencyH2E;
 extern double FeedbackReheatingEpsilon;
 extern double FeedbackGasSigma;
 extern double FeedbackExponent;

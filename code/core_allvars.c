@@ -80,6 +80,8 @@ double CoolingScaleConst;
 double ThreshMajorMerger;
 double BaryonFrac;
 double SfrEfficiency;
+double EnergyEfficiencyC2H;
+double EnergyEfficiencyH2E;
 double FeedbackReheatingEpsilon;
 double FeedbackGasSigma;
 double FeedbackExponent;
