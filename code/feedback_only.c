@@ -19,7 +19,7 @@ double NFW_profile(double radius, double R_vir, double M_vir, double r_2) {
     assert(R_vir>0);
     assert(M_vir>0);
     assert(r_2>0);
-    double result = (M_vir/radius) * pow(ln((R_vir + r_2)/r_2)-(R_vir/(R_vir + r_2)),-1)
+    double result = (-1) * (M_vir/radius) * pow(ln((R_vir + r_2)/r_2)-(R_vir/(R_vir + r_2)),-1)
                             * ln(1 + radius/r_2);
     return result;
 }
@@ -64,7 +64,7 @@ double CalcRho_0(double r_2, int p) {
 struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
 {
     double fac, Sigma_0gas, DiscPre, ColdPre;
-    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_efficiency2, energy_out, energy_c2h;
+    double r_inner, r_outer, r_av, area, j_bin, energy_h2e, energy_excess, energy_efficiency2, energy_out, energy_c2h, energy_c2h_2, energy_h2e_2;
     //check_channel_stars(p);
     r_inner = Gal[p].DiscRadii[i];
     r_outer = Gal[p].DiscRadii[i+1];
@@ -102,8 +102,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
              UnitVelocity_in_cm_per_s    100000            ;WATCH OUT: km/s
             */
             
-            double energy_efficiency = 0.2;   //energy_out/energy_in
-            double energy_efficiency2 = 0.2; //proportion of excess energy going into ejecting gas
+            double energy_efficiency = 0.65;   //energy_out/energy_in
+            double energy_efficiency2 = 2.0; //proportion of excess energy going into ejecting gas
             
             double energy_in =  0.5 * 630 * 630 * stars;
                                 //e_SN, Croton et al. pg8
@@ -120,10 +120,11 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
                 + NFW_profile(r_hot, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
             
             double energy_perunit_ejectedmass =
-                Gal[p].HotGas * 0.5 * V_rot * V_rot
+                0.5 * V_rot * V_rot
                 + NFW_profile(Gal[p].Rvir, Gal[p].Rvir, Gal[p].Mvir, CalcR_2(p));
             
             //assert(energy_perunit_hotmass>energy_perunit_coldmass);
+
             
             //Find the energy required to move between states
             double energy_c2h = energy_perunit_hotmass - energy_perunit_coldmass;
@@ -151,7 +152,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             stars *= fac;
             reheated_mass *= fac;
             assert(reheated_mass == reheated_mass && reheated_mass != INFINITY);
-            energy_excess = fac*energy_out - reheated_mass * energy_c2h;
+            energy_excess = energy_out - reheated_mass * energy_c2h;
         }
         
         if(stars<MIN_STARS_FOR_SN)
@@ -177,7 +178,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
                 ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
             } else {
                 //new ejected_mass argument
-                ejected_mass = energy_efficiency2 * (gas_sf/Gal[p].HotGas) * (energy_excess/energy_h2e);
+                //ejected_mass = energy_efficiency2 * (gas_sf/Gal[p].HotGas) * (energy_excess/energy_h2e);
+                ejected_mass = energy_efficiency2 * (energy_excess/energy_h2e); //* ((energy_excess/energy_h2e));
             }
             
         }
@@ -197,6 +199,8 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         Gal[p].DiscSFR[i] += stars / dt;
     }
     
+    //checks
+    //printf("EjectedMass: %f, ReheatedMass: %f, EnergyH2E: %f, EnergyC2H: %f, EnergyOut: %f, FAC: %f\n", ejected_mass, reheated_mass, energy_h2e, energy_c2h, energy_out, fac);
     DiscPre = Gal[p].DiscGas[i];
     ColdPre = Gal[p].ColdGas; //checking values before the function
 
