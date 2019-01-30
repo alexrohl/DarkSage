@@ -104,10 +104,10 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             
             //EnergyEfficiencyC2H: energy_out/energy_in
             //EnergyEfficiencyH2E: proportion of excess energy going into ejecting gas
-            
             double energy_in =  0.5 * 630 * 630 * stars;
                                 //e_SN, Croton et al. pg8
             double energy_out = EnergyEfficiencyC2H * energy_in;
+            
             
             //Energy per unit mass for each state: Cold, Hot, Ejected
             double energy_perunit_coldmass =
@@ -128,12 +128,13 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             //Find the energy required to move between states
             double energy_c2h = energy_perunit_hotmass - energy_perunit_coldmass;
             double energy_h2e = energy_perunit_ejectedmass - energy_perunit_hotmass;
-            assert(energy_h2e>0);
+            assert(energy_h2e>=0.0);
+            assert(energy_out>=0.0);
 
-            if (energy_c2h>0)   {
-                reheated_mass = energy_out/energy_c2h;
+            if (energy_c2h <= 0.0 && energy_out > 0.0)   {
+                reheated_mass = 1.0*gas_sf;
             } else {
-                reheated_mass = gas_sf;
+                reheated_mass = energy_out/energy_c2h;
                 //printf("high potential energy cold gas here, radius ratio: %f, reheat/stars ratio: %f\n",r_av/Gal[p].Rvir,reheated_mass/stars);
             }
             //assert(reheated_mass < Gal[p].DiscGas[i]);
@@ -151,17 +152,20 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             stars *= fac;
             reheated_mass *= fac;
             assert(reheated_mass == reheated_mass && reheated_mass != INFINITY);
-            energy_excess = energy_out - reheated_mass * energy_c2h;
-            assert(energy_excess>=0);
+            energy_excess = fac*energy_out - reheated_mass * energy_c2h;
+            if (energy_excess < 0.0) energy_excess = 0.0;
+            assert(energy_excess>=0.0);
+            assert(fac<1.0);
+            assert(reheated_mass>0.0);
         }
         
         if(stars<MIN_STARS_FOR_SN)
         {
-            stars = MIN_STARS_FOR_SN;
+            stars = 1.0*MIN_STARS_FOR_SN;
             reheated_mass = gas_sf - stars;
 
             if(feedback_type == -1 && gas_sf < MIN_STARS_FOR_SN) {
-                stars = gas_sf;
+                stars = 1.0*gas_sf;
                 reheated_mass = 0.0;
             }
             ejected_mass = 0.0;
@@ -174,11 +178,14 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
         
         else {
             //equation already formed from energy arguents
-            if (SupernovaRecipeOn == 3 && check!=0) {
+            if (SupernovaRecipeOn == 3) {
                 //new ejected_mass argument
                 //ejected_mass = energy_efficiency2 * (gas_sf/Gal[p].HotGas) * (energy_excess/energy_h2e);
-                ejected_mass = (energy_efficiency2 * energy_excess) / energy_h2e; //* ((energy_excess/energy_h2e));
-                //printf("TYPE: %d, EJECTED: %f, MIN: %f\n", feedback_type, ejected_mass, MIN_STARFORMATION);
+                if (energy_excess > 0 && energy_h2e > 0)  {
+                    ejected_mass = (energy_efficiency2 * energy_excess) / energy_h2e;
+                } else {
+                    ejected_mass = 0.0;
+                }
             } else {
                 ejected_mass = (FeedbackEjectionEfficiency * (EtaSNcode * EnergySNcode) / (V_rot * V_rot) - FeedbackReheatingEpsilon) * stars;
                 //printf("\ntrolling\n");
@@ -202,7 +209,11 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
     }
     
     //checks
-    //printf("EjectedMass: %f, ReheatedMass: %f, EnergyH2E: %f, EnergyC2H: %f, EnergyOut: %f, EnergyExcess: %f, FAC: %f\n", ejected_mass, reheated_mass, energy_h2e, energy_c2h, energy_out, energy_excess, fac);
+    if (energy_out > 0.001) {
+        printf("TYPE: %d, EjectedMass: %f, ReheatedMass: %f, EnergyH2E: %f, EnergyC2H: %f, EnergyOut: %f, EnergyExcess: %f, FAC: %f\n", feedback_type, ejected_mass, reheated_mass, energy_h2e, energy_c2h, energy_out, energy_excess, fac);
+    } else {
+        //printf("STARS2: %f\n", stars);
+    }
     DiscPre = Gal[p].DiscGas[i];
     ColdPre = Gal[p].ColdGas; //checking values before the function
 

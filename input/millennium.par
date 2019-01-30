@@ -70,7 +70,7 @@ ExponentBin                 1.4     ; The factor in spec ang mom between bins
 
 
 EnergyEfficiencyC2H         0.65
-EnergyEfficiencyH2E         0.00
+EnergyEfficiencyH2E         1.00
 SfrEfficiency               0.23
 
 FeedbackReheatingEpsilon    6.0
