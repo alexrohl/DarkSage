@@ -41,7 +41,7 @@ PartMass			0.0860657
 %------------------------------------------
 
 SFprescription				0		;0: proportional to H2; 1: as 0 but all gas for low H2 fraction a la Fu et al 2010; 2: Threshold cold mass (closest to SAGE implementation)
-H2prescription              1       ;0: mid-plane pressure; 1: metallicity-dependent (McKee & Krumholz 2010)
+H2prescription              0       ;0: mid-plane pressure; 1: metallicity-dependent (McKee & Krumholz 2010)
 AGNrecipeOn					2		;0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn			3		;0: switch off; 1: scale with local density; 2: uniform reheated fraction; 3: new energy equations
 ReionizationOn				1		;0: switch off

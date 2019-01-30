@@ -152,7 +152,7 @@ struct RecipeOutput recipe(int p, int centralgal, double dt, int step, double Ne
             stars *= fac;
             reheated_mass *= fac;
             assert(reheated_mass == reheated_mass && reheated_mass != INFINITY);
-            energy_excess = fac*energy_out - reheated_mass * energy_c2h;
+            energy_excess = energy_out - reheated_mass * energy_c2h;
             if (energy_excess < 0.0) energy_excess = 0.0;
             assert(energy_excess>=0.0);
             assert(fac<1.0);
