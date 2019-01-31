@@ -65,6 +65,7 @@ int HeatedToCentral;
 int ReincorpotationModel;
 int CoolingExponentialRadiusOn;
 int MvirDefinition;
+int EnergyDispersion;
 
 // binning information
 double FirstBin;

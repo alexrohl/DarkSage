@@ -1,3 +1,4 @@
+int EnergyDispersion;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -155,6 +156,10 @@ void read_parameter_file(char *fname)
     
   strcpy(tag[nt], "MvirDefinition");
   addr[nt] = &MvirDefinition;
+  id[nt++] = INT;
+    
+  strcpy(tag[nt], "EnergyDispersion");
+  addr[nt] = &EnergyDispersion;
   id[nt++] = INT;
 
   strcpy(tag[nt], "BaryonFrac");

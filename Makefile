@@ -12,6 +12,7 @@ SRCS   = 	./code/main.c \
 		./code/model_infall.c \
 		./code/model_cooling.c \
 		./code/feedback_only.c \
+		./code/feedback_annuli_dispersion.c \
 		./code/model_starformation_and_feedback.c \
 		./code/model_disk_instability.c \
 		./code/model_reincorporation.c \

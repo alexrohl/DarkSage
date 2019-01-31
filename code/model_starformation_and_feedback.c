@@ -60,7 +60,13 @@ void starformation_and_feedback(int p, int centralgal, double dt, int step)
     
 //Modularise!
 //Given int p, int centralgal, double dt, int step)
-    feedback(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, stars_angmom, 0, 0.0, NewStarsMetals, 1);
+    
+    if (EnergyDispersion == 0) {//restricted to annulus
+        feedback(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, stars_angmom, 0, 0.0, NewStarsMetals, 1);
+    } else {//dispersed accross annulli
+        feedback_dispersed(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, strdotfull, stars_angmom, 0, 0.0, NewStarsMetals, 1);
+    }
+    
 /*
   for(i=0; i<N_BINS; i++)
   {

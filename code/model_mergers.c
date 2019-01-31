@@ -657,7 +657,11 @@ void collisional_starburst_recipe(double disc_mass_ratio[N_BINS], int merger_cen
      
 //Modularised Here
 double fill[N_BINS];
-feedback(merger_centralgal, centralgal, dt, step, fill, fill, stars_sum, metals_stars_sum, 0.0, stars_angmom, mode, eburst, disc_mass_ratio, 0);
+     if (EnergyDispersion == 0) {//restricted to annulus
+         feedback(merger_centralgal, centralgal, dt, step, fill, fill, stars_sum, metals_stars_sum, 0.0, stars_angmom, mode, eburst, disc_mass_ratio, 0);
+     } else {//dispersed accross annulli
+         feedback_dispersed(merger_centralgal, centralgal, dt, step, fill, fill, stars_sum, metals_stars_sum, 0.0, stars_angmom, mode, eburst, disc_mass_ratio, 0);
+     }
 /*
   for(k=0; k<N_BINS; k++)
   {
