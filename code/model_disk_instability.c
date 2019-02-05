@@ -57,6 +57,7 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
     first_star = 1;
     
     // Deal with gas instabilities
+    double all_stars[N_BINS];
 	for(i=N_BINS-1; i>=0; i--)
 	{
         r_inner = Gal[p].DiscRadii[i];
