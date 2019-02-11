@@ -6,16 +6,95 @@
 #include <assert.h>
 #include "core_allvars.h"
 #include "core_proto.h"
-//Function to deal with energy distribution
-
-
-//___________________________
-
-
 //new paramaters
 //type: -1 : disk instability
 //       0 : mergers
 //       1 : starform + feedback
+
+//Function to deal with energy distribution
+//now implemented with inner/outer argument
+//height = 11^2 / 2*PI*G*(gas + stars)
+void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BINS], int p) {
+    int i;
+    double annuli_energy_final[N_BINS];
+    for(i=0; i<N_BINS; i++) {
+        annuli_energy_final[i] = 0.0;
+    }
+    
+    //to check if we are working in inner-most or outer-most radii
+    for(i=0; i<N_BINS; i++)
+    {
+        int inner;
+        int outer;
+        double h_inner;
+        double h_outer;
+        if (i==0) {//inner radius will receive the inner amount for now
+            inner = i;
+            outer = i+1;
+        } else if (i < (N_BINS-1)) {
+            inner = i-1;
+            outer = i+1;
+        } else {//outer radius will receive the outer distribution as well for now
+            inner = i-1;
+            outer = i;
+        }
+        if (all_stars[inner]+Gal[p].DiscGas[inner] <= 0.0) {
+            h_inner = 0.0;
+        } else {
+            h_inner = 11*11 / (2*M_PI * GRAVITY * (all_stars[inner]+Gal[p].DiscGas[inner]));
+        }
+        if (all_stars[outer]+Gal[p].DiscGas[outer] <= 0.0) {
+            h_outer = 0.0;
+        } else {
+            h_outer = 11*11 / (2*M_PI * GRAVITY * (all_stars[outer]+Gal[p].DiscGas[outer]));
+        }
+        
+        double r_inner = 1.0*Gal[p].DiscRadii[i];
+        double r_outer = 1.0*Gal[p].DiscRadii[i+1];
+        double r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
+        double energy = 1.0*annuli_energy_init[i];
+        double innerVol = (M_PI/3) * (r_av - r_inner) * (r_av + 2*r_inner) * h_inner;
+        double outerVol = (M_PI/3) * (r_outer - r_av) * (r_av + 2*r_outer) * h_outer;
+        double totalVol = (M_PI/3) * (r_outer - r_inner) * (h_inner*(r_inner + 2*r_outer) + h_outer*(r_outer + 2*r_inner));
+        double remainVol = 0.0;
+        double inner_prop = 0.0;
+        double remaining_prop = 0.0;
+        double outer_prop = 0.0;
+        if (totalVol > 0.0) {
+            remainVol = totalVol - innerVol - outerVol;
+            inner_prop = innerVol / totalVol;
+            remaining_prop = remainVol / totalVol;
+            outer_prop = outerVol / totalVol;
+        }
+        assert(r_av >= r_inner);
+        double area = M_PI * (r_outer*r_outer - r_inner*r_inner);
+        
+        assert(outer<N_BINS);
+        //printf("%d, %d\n",inner,outer);
+        annuli_energy_final[inner] += energy * inner_prop;
+        annuli_energy_final[i]     += energy * remaining_prop;
+        annuli_energy_final[outer] += energy * outer_prop;
+        //printf("energy in: %f, ", energy);
+    }
+    for(i=0; i<N_BINS; i++)
+    {
+        if (!(annuli_energy_final[i] < 0.0 || isnan(annuli_energy_final[i]))) {
+            annuli_energy_init[i] = 1.0*annuli_energy_final[i];
+        } else {
+            annuli_energy_init[i] = 0.00000;
+        }
+        assert(annuli_energy_init[i] >= 0);
+        if(isnan(annuli_energy_final[i])){
+        printf("energy_init: %f, energy_final: %f\n", annuli_energy_init[i], annuli_energy_final[i]);
+        }//printf("inner:%f, outer:%f, av: %f, oprop: %f, energy: %f, FINAL:%f\n",r_inner, r_outer, r_av,outer_prop, energy, annuli_energy_init[i]);
+        //printf("energy out: %f, ", annuli_energy_init[i]);
+        
+    }
+    //check
+    //for(i=0; i<N_BINS; i++)
+    //{ printf("energy_final: %f\n", annuli_energy_init[i]); }
+    //
+}
 
 //recipe essentially deals with updating all the necessay fields.
 struct RecipeOutput recipe_dispersed(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot, double annuli_energy)
@@ -332,49 +411,12 @@ void feedback_dispersed(int p, int centralgal, double dt, int step, double NewSt
     }
     
     //redistribute energy here:
-    for(i=0; i<N_BINS; i++)
-    {
-        double r_inner = Gal[p].DiscRadii[i];
-        double r_outer = Gal[p].DiscRadii[i+1];
-        double r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
-        double inner_prop = (asin(r_inner/r_av)/M_PI);
-        double outer_prop = 1 - inner_prop;
-        double energy = annuli_energy_init[i];
-        int inner;
-        int outer;
-        assert(inner_prop >= 0.0);
-        assert(inner_prop <= 1.0);
-        assert(outer_prop >= 0.0);
-        assert(outer_prop <= 1.0);
-        assert(r_av >= r_inner);
-        area = M_PI * (r_outer*r_outer - r_inner*r_inner);
-        if (i==0) {//inner radius will receive the inner amount for now
-            inner = i;
-            outer = i+1;
-        } else if (i < (N_BINS-1)) {
-            inner = i-1;
-            outer = i+1;
-        } else {//outer radius will receive the outer distribution as well for now
-            inner = i-1;
-            outer = i;
-        }
-        assert(outer<N_BINS);
-        //printf("inner:%f, outer:%f, av: %f, oprop: %f, energy: %f, prevFINAL:%f\n",r_inner, r_outer, r_av,outer_prop, energy, annuli_energy_final[outer]);
-        annuli_energy_final[inner] += energy * inner_prop;
-        annuli_energy_final[outer] += energy * outer_prop;
-    }
-    for(i=0; i<N_BINS; i++)
-    {
-        if (annuli_energy_final[i] < 0 || annuli_energy_final[i] != annuli_energy_final[i]) {
-            annuli_energy_final[i] = 0.0001;
-        }
-    //printf("type: %d, energy_init: %f, energy_final: %f\n",feedback_type, annuli_energy_init[i], annuli_energy_final[i]);
-    }
+    distribute_energy(all_stars, annuli_energy_init, p);
     //energy now redistrubted.
         
     for(i=0; i<N_BINS; i++)
     {
-        double energy = 1.0*annuli_energy_final[i];
+        double energy = 1.0*annuli_energy_init[i];
         double stars = 1.0*all_stars[i];
         struct RecipeOutput output = recipe_dispersed(p, centralgal, dt, step, NewStars, NewStarsMetals, stars_sum, metals_stars_sum, 0.0, ejected_mass, ejected_sum, reheated_mass, metallicity, stars_angmom, i, stars, feedback_type, Gal[p].DiscGas[i], Gal[centralgal].Vvir, energy);
         
