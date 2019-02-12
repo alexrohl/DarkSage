@@ -7,8 +7,40 @@
 
 #include "core_allvars.h"
 #include "core_proto.h"
-
-
+void count_stars_mergers(int p, all_stars[N_BINS], annuli_energy[N_BINS]) {
+    double unstable_gas, metallicity, stars, net_stars;
+    double disc_mass_ratio[N_BINS], PostRetroGas[N_BINS];
+    int merger_centralgal = p;
+    int i;
+    for(i=N_BINS-1; i>=0; i--)
+    {
+        if(PostRetroGas[i] < 0.99*Gal[merger_centralgal].DiscGas[i] && Gal[merger_centralgal].DiscGas[i]-PostRetroGas[i] > 1e-10)
+        {
+            unstable_gas = Gal[merger_centralgal].DiscGas[i] - PostRetroGas[i];
+            //stars = deal_with_unstable_gas(unstable_gas, merger_centralgal, i, Gal[merger_centralgal].Vvir, metallicity, centralgal, Gal[merger_centralgal].DiscRadii[i], Gal[merger_centralgal].DiscRadii[i+1],annuli_energy);
+            double gas_sink, gas_sf;
+            double stars;
+            
+            if(unstable_gas > Gal[p].DiscGas[i])
+                unstable_gas = Gal[p].DiscGas[i];
+            
+            // Let gas sink -- one may well want to change this formula
+            gas_sink = GasSinkRate * unstable_gas;
+            
+            if(unstable_gas - gas_sink < MIN_STARFORMATION) {// Not enough unstable gas to form stars
+                gas_sink = unstable_gas;
+            }
+            
+            // Calculate new stars formed in that annulus
+            stars = unstable_gas - gas_sink;
+        } else {
+            stars = 0.0;
+        }
+        double energy = 0.5 * 630 * 630 * stars;
+        all_stars[i] = stars;
+        annuli_energy[i] = energy;
+    }
+}
 
 double estimate_merging_time(int sat_halo, int mother_halo, int ngal)
 {
@@ -40,6 +72,7 @@ double estimate_merging_time(int sat_halo, int mother_halo, int ngal)
 
 void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, double time, double dt, int step)
 {
+  //printf("deal with galaxy merger");
   double mi, ma, mass_ratio;
   double disc_mass_ratio[N_BINS], PostRetroGas[N_BINS];
   int i;
@@ -70,13 +103,13 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
 	mass_ratio = 0.0;
 	printf("Had to correct mass_ratio < 0.0");
   }
-
   add_galaxies_together(merger_centralgal, p, mass_ratio, disc_mass_ratio, PostRetroGas);
-  
+
   for(i=0; i<N_BINS; i++) assert(disc_mass_ratio[i] <= 1.0 && disc_mass_ratio[i]>=0.0);
 
   collisional_starburst_recipe(disc_mass_ratio, merger_centralgal, centralgal, dt, 0, step);
 
+    
   double BHaccrete = grow_black_hole(merger_centralgal, disc_mass_ratio);
 
   if(AGNrecipeOn>0)
@@ -84,6 +117,12 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
 
   // Check whether any retrograde gas is left over
   double unstable_gas, metallicity, stars, net_stars;
+  double all_stars[N_BINS], annuli_energy[N_BINS];
+  if (EnergyDispersion == 1) {
+      //printf("running count stars");
+      count_stars_mergers(p, all_stars, annuli_energy);
+      distribute_energy(all_stars, annuli_energy, p);
+  }
   for(i=N_BINS-1; i>=0; i--)
   {
 	metallicity = get_metallicity(Gal[merger_centralgal].DiscGas[i], Gal[merger_centralgal].DiscGasMetals[i]);
@@ -92,7 +131,7 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
 	if(PostRetroGas[i] < 0.99*Gal[merger_centralgal].DiscGas[i] && Gal[merger_centralgal].DiscGas[i]-PostRetroGas[i] > 1e-10)
 	{
 		unstable_gas = Gal[merger_centralgal].DiscGas[i] - PostRetroGas[i];
-        stars = deal_with_unstable_gas(unstable_gas, merger_centralgal, i, Gal[merger_centralgal].Vvir, metallicity, centralgal, Gal[merger_centralgal].DiscRadii[i], Gal[merger_centralgal].DiscRadii[i+1]);
+        stars = deal_with_unstable_gas(unstable_gas, merger_centralgal, i, Gal[merger_centralgal].Vvir, metallicity, centralgal, Gal[merger_centralgal].DiscRadii[i], Gal[merger_centralgal].DiscRadii[i+1],annuli_energy);
         
         if(stars>=MIN_STARS_FOR_SN)
             net_stars = (1 - RecycleFraction) * stars;

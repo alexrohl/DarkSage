@@ -7,6 +7,116 @@
 
 #include "core_allvars.h"
 #include "core_proto.h"
+//define a new function count_disk_stars to preprepare the all_stars and annuli_energy arrays
+void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BINS]) {
+    double Q_star, Q_gas, V_rot, Q_gas_min, Q_star_min, Q_tot, W, Q_stable;
+    double unstable_gas, unstable_stars, metallicity, stars, stars_sum, gas_sink;
+    double r_inner, r_outer, r_av, Kappa, sigma_R, c_s;
+    double NewStars[N_BINS], NewStarsMetals[N_BINS], SNgas[N_BINS], angle, DiscGasSum, DiscStarSum;
+    double old_spin[3], SNgas_copy[N_BINS], SNgas_proj[N_BINS], cos_angle;
+    int i, s;
+    int first, first_gas, first_star;
+    double star_init = Gal[p].StellarMass;
+
+    c_s = 1.1e6 / UnitVelocity_in_cm_per_s; // Speed of sound assumed for cold gas, now set to be the same as vel disp of gas at 11 km/s
+    
+    angle = acos(Gal[p].SpinStars[0]*Gal[p].SpinGas[0] + Gal[p].SpinStars[1]*Gal[p].SpinGas[1] + Gal[p].SpinStars[2]*Gal[p].SpinGas[2])*180.0/M_PI;
+    
+    if(Gal[p].Vvir>0.0)
+        V_rot = Gal[p].Vvir;
+    else
+        V_rot = Gal[p].Vmax;
+    
+    // Deal with gaseous instabilities
+    stars_sum = 0.0;
+    gas_sink = -Gal[p].BlackHoleMass;
+    
+    // Deal with gas instabilities
+    for(i=N_BINS-1; i>=0; i--)
+    {
+        r_inner = Gal[p].DiscRadii[i];
+        r_outer = Gal[p].DiscRadii[i+1];
+        r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
+        
+        if(Gal[p].DiscGas[i]==0.0)
+            continue;
+        
+        if(i>0)
+            Kappa = sqrt(2.0*DiscBinEdge[i]/cube(r_inner) * (DiscBinEdge[i+1]-DiscBinEdge[i])/(r_outer-r_inner));
+        else
+            Kappa = sqrt(2.0*DiscBinEdge[i+1]/cube(r_outer) * (DiscBinEdge[i+1]-DiscBinEdge[i])/(r_outer-r_inner));
+        
+        sigma_R = 0.5*Gal[p].Vvir*exp_f(-r_av/2.0/Gal[p].StellarDiscScaleRadius);
+        
+        Q_gas = c_s * Kappa * (sqr(r_outer) - sqr(r_inner)) / G / Gal[p].DiscGas[i];
+        
+        if(Gal[p].DiscStars[i]>0.0 && angle<=ThetaThresh)
+        {
+            Q_star = Kappa * sigma_R * 0.935 * (sqr(r_outer) - sqr(r_inner)) / G / Gal[p].DiscStars[i];
+            
+            W = 2.0*sigma_R*c_s / (sigma_R*sigma_R + c_s*c_s);
+            if(Q_gas >= Q_star)
+                Q_tot = 1.0 / (W/Q_gas + 1.0/Q_star);
+            else
+                Q_tot = 1.0 / (1.0/Q_gas + W/Q_star);
+            
+            if(Q_tot>=QTotMin)
+                continue;
+            
+            Q_stable = QTotMin + W; // This would be the quantity to make both Q_s and Q_g if they're both lower than this.
+            if(Q_gas<Q_stable && Q_star<Q_stable)
+                Q_gas_min = Q_stable;
+            else if(Q_gas<Q_stable && Q_star>=Q_stable)
+                Q_gas_min = 1.0 / (1.0/QTotMin - W/Q_star);
+            else //if(Q_gas>=Q_stable && Q_star<Q_stable)
+            {
+                Q_gas_min = QTotMin; // Somehow needed this to prevent triggering assert below, despite 'continue' on the next line
+                continue; // The stars' responsibility to sort out the instability
+            }
+            
+        }
+        else
+            Q_gas_min = QTotMin;
+        
+        assert(Q_gas_min >= QTotMin);
+        
+        if(Q_gas<Q_gas_min)
+        {
+            
+            unstable_gas = Gal[p].DiscGas[i]*(1.0 - Q_gas/Q_gas_min);
+            
+            if(unstable_gas>1e-10)
+            {
+                metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
+                assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
+                assert(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
+                
+                //stars = deal_with_unstable_gas(unstable_gas, p, i, V_rot, metallicity, centralgal, r_inner, r_outer);
+                double gas_sink, gas_sf;
+                double stars;
+                
+                if(unstable_gas > Gal[p].DiscGas[i])
+                    unstable_gas = Gal[p].DiscGas[i];
+                
+                // Let gas sink -- one may well want to change this formula
+                gas_sink = GasSinkRate * unstable_gas;
+                
+                if(unstable_gas - gas_sink < MIN_STARFORMATION) {// Not enough unstable gas to form stars
+                    gas_sink = unstable_gas;
+                }
+                
+                // Calculate new stars formed in that annulus
+                stars = unstable_gas - gas_sink;
+                
+            } else {
+                stars = 0.0;
+            }
+            double energy = 0.5 * 630 * 630 * stars;
+            all_stars[i] = stars;
+            annuli_energy[i] = energy;
+        }
+    }
+}
 
 
 void check_disk_instability(int p, int centralgal, double dt, int step)
@@ -58,6 +168,11 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
     
     // Deal with gas instabilities
     double all_stars[N_BINS];
+    double annuli_energy[N_BINS];
+    if (EnergyDispersion == 1) {
+        count_disk_stars(p,all_stars,annuli_energy);
+        distribute_energy(all_stars,annuli_energy,p);
+    }
 	for(i=N_BINS-1; i>=0; i--)
 	{
         r_inner = Gal[p].DiscRadii[i];
@@ -129,7 +244,8 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
                 assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
                 assert(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
                 
-                stars = deal_with_unstable_gas(unstable_gas, p, i, V_rot, metallicity, centralgal, r_inner, r_outer);
+                stars = deal_with_unstable_gas(unstable_gas, p, i, V_rot, metallicity, centralgal, r_inner, r_outer, annuli_energy);
+
                 if(stars>=MIN_STARS_FOR_SN)
                     SNgas[i] = RecycleFraction * stars;
                 else
@@ -159,7 +275,10 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
         Q_gas = c_s * Kappa * (r_outer*r_outer - r_inner*r_inner) / G / (Gal[p].DiscGas[i]-SNgas[i]);
         if(!(Q_gas>0)) printf("c_s = %e, Kappa = %e, r_outer = %e, r_inner = %e, DiscGas = %e, SNgas = %e", c_s, Kappa, r_outer, r_inner, Gal[p].DiscGas[i], SNgas[i]);
         assert(Q_gas>0);
-        if(Q_gas < 0.99*Q_gas_min) printf("Q_gas final, min = %e, %e\n", Q_gas, Q_gas_min);
+        if(Q_gas < 0.99*Q_gas_min) {
+            printf("c_s = %e, Kappa = %e, r_outer = %e, r_inner = %e, DiscGas = %e, SNgas = %e", c_s, Kappa, r_outer, r_inner, Gal[p].DiscGas[i], SNgas[i]);
+            printf("Q_gas final, min = %e, %e\n", Q_gas, Q_gas_min);
+        }
         assert(Q_gas >= 0.99*Q_gas_min);
         assert(Q_gas >= 0.99*QTotMin);
 	}
@@ -326,7 +445,7 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
     
 }
 
-double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, double metallicity, int centralgal, double r_inner, double r_outer)
+double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, double metallicity, int centralgal, double r_inner, double r_outer, double annuli_energy[N_BINS])
 {
 	double gas_sink, gas_sf;
 	double stars, reheated_mass, ejected_mass, Sigma_0gas, fac, area;
@@ -389,9 +508,19 @@ double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, d
 	stars = unstable_gas - gas_sink;
 	if(Gal[p].DiscGas[i] > 0.0 && stars > 0.0) // Quasar feedback could blow out the unstable gas
 	{
+        
         //recipe(int p, int centralgal, double dt, int step, double NewStars[N_BINS], double NewStarsMetals[N_BINS], double stars_sum, double metals_stars_sum, double strdotfull, double ejected_mass, double ejected_sum, double reheated_mass, double metallicity, double stars_angmom, int i, double stars, int feedback_type, double gas_sf, double V_rot)
-        struct RecipeOutput output = recipe(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
-        stars = output.stars;
+        double energy = annuli_energy[i];
+        if (EnergyDispersion == 0) {
+            struct RecipeOutput output = recipe(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot);
+            stars = output.stars;
+
+        } else {
+            struct RecipeOutput output = recipe_dispersed(p, centralgal, 0.0, 0, fill, fill, 0.0, 0.0, 0.0, 0.0, ejected_sum, 0.0, metallicity, 0.0, i, stars, -1, gas_sf, V_rot, energy);
+            stars = output.stars;
+        }
+    } else {
+        stars = 0.0;
     }
 	return stars;
 }

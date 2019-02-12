@@ -58,7 +58,7 @@ void check_disk_instability(int p, int centralgal, double dt, int step);
 void retrograde_gas_collision(int p, double cos_angle_halo_new, double cos_angle_disc_new, double J_disc, double J_cool);
 void combine_stellar_discs(int p, double NewStars[N_BINS], double NewStarsMetals[N_BINS]);
 void project_disc(double DiscMass[N_BINS], double cos_angle, int p, double *NewDisc);
-double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, double metallicity, int centralgal, double r_inner, double r_outer);
+double deal_with_unstable_gas(double unstable_gas, int p, int i, double V_rot, double metallicity, int centralgal, double r_inner, double r_outer, double annuli_energy[N_BINS]);
 double get_disc_gas(int halonr);
 double get_disc_stars(int halonr);
 double get_disc_ang_mom(int halonr, int type);

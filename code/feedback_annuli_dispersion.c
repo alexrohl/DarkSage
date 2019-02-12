@@ -78,15 +78,16 @@ void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BIN
     }
     for(i=0; i<N_BINS; i++)
     {
+        //printf("energy_init: %f, energy_final: %f\n", annuli_energy_init[i], annuli_energy_final[i]);
         if (!(annuli_energy_final[i] < 0.0 || isnan(annuli_energy_final[i]))) {
             annuli_energy_init[i] = 1.0*annuli_energy_final[i];
         } else {
             annuli_energy_init[i] = 0.00000;
         }
         assert(annuli_energy_init[i] >= 0);
-        if(isnan(annuli_energy_final[i])){
-        printf("energy_init: %f, energy_final: %f\n", annuli_energy_init[i], annuli_energy_final[i]);
-        }//printf("inner:%f, outer:%f, av: %f, oprop: %f, energy: %f, FINAL:%f\n",r_inner, r_outer, r_av,outer_prop, energy, annuli_energy_init[i]);
+        //if(isnan(annuli_energy_final[i])){
+        
+        //}//printf("inner:%f, outer:%f, av: %f, oprop: %f, energy: %f, FINAL:%f\n",r_inner, r_outer, r_av,outer_prop, energy, annuli_energy_init[i]);
         //printf("energy out: %f, ", annuli_energy_init[i]);
         
     }
@@ -411,9 +412,9 @@ void feedback_dispersed(int p, int centralgal, double dt, int step, double NewSt
     }
     
     //redistribute energy here:
+
     distribute_energy(all_stars, annuli_energy_init, p);
     //energy now redistrubted.
-        
     for(i=0; i<N_BINS; i++)
     {
         double energy = 1.0*annuli_energy_init[i];
@@ -428,7 +429,6 @@ void feedback_dispersed(int p, int centralgal, double dt, int step, double NewSt
         NewStarsMetals[i] = 1.0*output.NewMetalsDisk;
     }
     //printf("Ejected Sum: %f, Stars Sum: %f\n", ejected_sum, stars_sum);
-    
     if(ejected_sum>0.0) {//updating masses after ejection
         update_from_ejection(p, centralgal, ejected_sum);
     }
