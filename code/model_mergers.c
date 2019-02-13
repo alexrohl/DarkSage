@@ -7,22 +7,24 @@
 
 #include "core_allvars.h"
 #include "core_proto.h"
-void count_stars_mergers(int p, all_stars[N_BINS], annuli_energy[N_BINS]) {
+void count_stars_mergers(int merger_centralgal, int p, double all_stars[N_BINS], double annuli_energy[N_BINS], double PostRetroGas[N_BINS], double DiskGasClone[N_BINS]) {
+    
     double unstable_gas, metallicity, stars, net_stars;
-    double disc_mass_ratio[N_BINS], PostRetroGas[N_BINS];
-    int merger_centralgal = p;
     int i;
     for(i=N_BINS-1; i>=0; i--)
     {
-        if(PostRetroGas[i] < 0.99*Gal[merger_centralgal].DiscGas[i] && Gal[merger_centralgal].DiscGas[i]-PostRetroGas[i] > 1e-10)
+        double gas = DiskGasClone[i];
+        //printf("Gas:%f, Retro:%f\n", gas, PostRetroGas[i]);
+        if(PostRetroGas[i] < 0.99*gas && gas - PostRetroGas[i] > 1e-10)
         {
-            unstable_gas = Gal[merger_centralgal].DiscGas[i] - PostRetroGas[i];
+            unstable_gas = gas - PostRetroGas[i];
+            //printf("preUnstablegas:%f\n",unstable_gas);
             //stars = deal_with_unstable_gas(unstable_gas, merger_centralgal, i, Gal[merger_centralgal].Vvir, metallicity, centralgal, Gal[merger_centralgal].DiscRadii[i], Gal[merger_centralgal].DiscRadii[i+1],annuli_energy);
             double gas_sink, gas_sf;
             double stars;
             
-            if(unstable_gas > Gal[p].DiscGas[i])
-                unstable_gas = Gal[p].DiscGas[i];
+            if(unstable_gas > gas)
+                unstable_gas = gas;
             
             // Let gas sink -- one may well want to change this formula
             gas_sink = GasSinkRate * unstable_gas;
@@ -31,14 +33,57 @@ void count_stars_mergers(int p, all_stars[N_BINS], annuli_energy[N_BINS]) {
                 gas_sink = unstable_gas;
             }
             
+            //update "DiscGas"
+            DiskGasClone[i] -= gas_sink;
+            //Gal[p].DiscGasMetals[i] -= metallicity * gas_sink;
+            
+            //Gal[p].TotSinkGas[i] += gas_sink;
+            
+            if(i==N_BINS-1)
+            {
+                DiskGasClone[i-1] += gas_sink;
+                //Gal[p].DiscGasMetals[i-1] += metallicity * gas_sink;
+                //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
+            }
+            else // Conserve angular momentum while moving gas to restore stability
+            {
+                double m_up;
+                double j_gain = (DiscBinEdge[i+2]-DiscBinEdge[i])/2.0;
+                if(i==0)
+                {
+                    double j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i])/2.0;
+                    double m_up = j_lose / (j_gain + j_lose) * gas_sink;
+                    double m_down = m_up * j_gain / j_lose;
+                    //Gal[p].BlackHoleMass += m_down;
+                    //Gal[p].ColdGas -= m_down;
+                    //Gal[p].MetalsColdGas -= metallicity * m_down;
+                    //assert(Gal[p].MetalsColdGas<=Gal[p].ColdGas);
+                }
+                else
+                {
+                    double j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i-1])/2.0;
+                    double m_up = j_lose / (j_gain + j_lose) * gas_sink;
+                    double m_down = m_up * j_gain / j_lose;
+                    DiskGasClone[i-1] += m_down;
+                    //Gal[p].DiscGasMetals[i-1] += metallicity * m_down;
+                    //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
+                }
+                
+                DiskGasClone[i+1] += m_up;
+                //Gal[p].DiscGasMetals[i+1] += metallicity * m_up;
+                //assert(Gal[p].DiscGasMetals[i+1] <= Gal[p].DiscGas[i+1]);
+            }
+            
             // Calculate new stars formed in that annulus
             stars = unstable_gas - gas_sink;
         } else {
             stars = 0.0;
         }
+        //printf("gas1: %f\n",DiskGasClone[i]);
         double energy = 0.5 * 630 * 630 * stars;
         all_stars[i] = stars;
         annuli_energy[i] = energy;
+        //printf("stars: %f, energy: %f\n",stars, energy);
     }
 }
 
@@ -107,6 +152,7 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
 
   for(i=0; i<N_BINS; i++) assert(disc_mass_ratio[i] <= 1.0 && disc_mass_ratio[i]>=0.0);
 
+  
   collisional_starburst_recipe(disc_mass_ratio, merger_centralgal, centralgal, dt, 0, step);
 
     
@@ -117,20 +163,26 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
 
   // Check whether any retrograde gas is left over
   double unstable_gas, metallicity, stars, net_stars;
-  double all_stars[N_BINS], annuli_energy[N_BINS];
+  double all_stars[N_BINS], annuli_energy[N_BINS], DiskGasClone[N_BINS];
+  for(i=N_BINS-1; i>=0; i--) {DiskGasClone[i] = 1.0*Gal[merger_centralgal].DiscGas[i];}
+    
   if (EnergyDispersion == 1) {
       //printf("running count stars");
-      count_stars_mergers(p, all_stars, annuli_energy);
+      //printf("PRE\n");
+      count_stars_mergers(merger_centralgal, p, all_stars, annuli_energy, PostRetroGas, DiskGasClone);
       distribute_energy(all_stars, annuli_energy, p);
   }
+  //printf("POST\n");
   for(i=N_BINS-1; i>=0; i--)
   {
 	metallicity = get_metallicity(Gal[merger_centralgal].DiscGas[i], Gal[merger_centralgal].DiscGasMetals[i]);
 	assert(Gal[merger_centralgal].DiscGasMetals[i] <= Gal[merger_centralgal].DiscGas[i]);
-	
+    //printf("gas2: %f\n",Gal[merger_centralgal].DiscGas[i]);
 	if(PostRetroGas[i] < 0.99*Gal[merger_centralgal].DiscGas[i] && Gal[merger_centralgal].DiscGas[i]-PostRetroGas[i] > 1e-10)
 	{
+        //printf("Gas:%f, Retro:%f\n", clone[i], PostRetroGas[i]);
 		unstable_gas = Gal[merger_centralgal].DiscGas[i] - PostRetroGas[i];
+        //printf("unstable gas due to merger: %f\n",unstable_gas);
         stars = deal_with_unstable_gas(unstable_gas, merger_centralgal, i, Gal[merger_centralgal].Vvir, metallicity, centralgal, Gal[merger_centralgal].DiscRadii[i], Gal[merger_centralgal].DiscRadii[i+1],annuli_energy);
         
         if(stars>=MIN_STARS_FOR_SN)
@@ -153,6 +205,7 @@ void deal_with_galaxy_merger(int p, int merger_centralgal, int centralgal, doubl
         }
 
 	}
+      //printf("ran");
   }
 
   if(mass_ratio > ThreshMajorMerger)
