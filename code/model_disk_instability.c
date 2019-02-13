@@ -8,7 +8,8 @@
 #include "core_allvars.h"
 #include "core_proto.h"
 //define a new function count_disk_stars to preprepare the all_stars and annuli_energy arrays
-void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BINS]) {
+void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BINS], double DiskGasClone[N_BINS]) {
+    
     double Q_star, Q_gas, V_rot, Q_gas_min, Q_star_min, Q_tot, W, Q_stable;
     double unstable_gas, unstable_stars, metallicity, stars, stars_sum, gas_sink;
     double r_inner, r_outer, r_av, Kappa, sigma_R, c_s;
@@ -34,11 +35,12 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
     // Deal with gas instabilities
     for(i=N_BINS-1; i>=0; i--)
     {
+        double gas = DiskGasClone[i];
         r_inner = Gal[p].DiscRadii[i];
         r_outer = Gal[p].DiscRadii[i+1];
         r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
         
-        if(Gal[p].DiscGas[i]==0.0)
+        if(gas==0.0)
             continue;
         
         if(i>0)
@@ -48,7 +50,7 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
         
         sigma_R = 0.5*Gal[p].Vvir*exp_f(-r_av/2.0/Gal[p].StellarDiscScaleRadius);
         
-        Q_gas = c_s * Kappa * (sqr(r_outer) - sqr(r_inner)) / G / Gal[p].DiscGas[i];
+        Q_gas = c_s * Kappa * (sqr(r_outer) - sqr(r_inner)) / G / gas;
         
         if(Gal[p].DiscStars[i]>0.0 && angle<=ThetaThresh)
         {
@@ -83,26 +85,66 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
         if(Q_gas<Q_gas_min)
         {
             
-            unstable_gas = Gal[p].DiscGas[i]*(1.0 - Q_gas/Q_gas_min);
+            unstable_gas = gas*(1.0 - Q_gas/Q_gas_min);
             
             if(unstable_gas>1e-10)
             {
-                metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
-                assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
-                assert(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
+                //metallicity = get_metallicity(Gal[p].DiscGas[i], Gal[p].DiscGasMetals[i]);
+                //assert(Gal[p].DiscStarsMetals[i] <= Gal[p].DiscStars[i]);
+                //(Gal[p].DiscGasMetals[i] <= Gal[p].DiscGas[i]);
                 
                 //stars = deal_with_unstable_gas(unstable_gas, p, i, V_rot, metallicity, centralgal, r_inner, r_outer);
                 double gas_sink, gas_sf;
                 double stars;
                 
-                if(unstable_gas > Gal[p].DiscGas[i])
-                    unstable_gas = Gal[p].DiscGas[i];
+                if(unstable_gas > gas)
+                    unstable_gas = gas;
                 
                 // Let gas sink -- one may well want to change this formula
                 gas_sink = GasSinkRate * unstable_gas;
                 
                 if(unstable_gas - gas_sink < MIN_STARFORMATION) {// Not enough unstable gas to form stars
                     gas_sink = unstable_gas;
+                }
+                //update "DiscGas"
+                DiskGasClone[i] -= gas_sink;
+                //Gal[p].DiscGasMetals[i] -= metallicity * gas_sink;
+                
+                //Gal[p].TotSinkGas[i] += gas_sink;
+                
+                if(i==N_BINS-1)
+                {
+                    //DiskGasClone[i-1] += gas_sink;
+                    //Gal[p].DiscGasMetals[i-1] += metallicity * gas_sink;
+                    //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
+                }
+                else // Conserve angular momentum while moving gas to restore stability
+                {
+                    double m_up;
+                    double j_gain = (DiscBinEdge[i+2]-DiscBinEdge[i])/2.0;
+                    if(i==0)
+                    {
+                        double j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i])/2.0;
+                        double m_up = j_lose / (j_gain + j_lose) * gas_sink;
+                        double m_down = m_up * j_gain / j_lose;
+                        //Gal[p].BlackHoleMass += m_down;
+                        //Gal[p].ColdGas -= m_down;
+                        //Gal[p].MetalsColdGas -= metallicity * m_down;
+                        //assert(Gal[p].MetalsColdGas<=Gal[p].ColdGas);
+                    }
+                    else
+                    {
+                        double j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i-1])/2.0;
+                        double m_up = j_lose / (j_gain + j_lose) * gas_sink;
+                        double m_down = m_up * j_gain / j_lose;
+                        //DiskGasClone[i-1] += m_down;
+                        //Gal[p].DiscGasMetals[i-1] += metallicity * m_down;
+                        //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
+                    }
+                    
+                    //DiskGasClone[i+1] += m_up;
+                    //Gal[p].DiscGasMetals[i+1] += metallicity * m_up;
+                    //assert(Gal[p].DiscGasMetals[i+1] <= Gal[p].DiscGas[i+1]);
                 }
                 
                 // Calculate new stars formed in that annulus
@@ -165,12 +207,16 @@ void check_disk_instability(int p, int centralgal, double dt, int step)
     first = 1;
     first_gas = 1;
     first_star = 1;
-    
+    double DiskGasClone[N_BINS];
+    for(i=N_BINS-1; i>=0; i--) {
+        DiskGasClone[i] = 1.0*Gal[p].DiscGas[i];
+    }
+
     // Deal with gas instabilities
     double all_stars[N_BINS];
     double annuli_energy[N_BINS];
     if (EnergyDispersion == 1) {
-        count_disk_stars(p,all_stars,annuli_energy);
+        count_disk_stars(p,all_stars,annuli_energy, DiskGasClone);
         distribute_energy(all_stars,annuli_energy,p);
     }
 	for(i=N_BINS-1; i>=0; i--)
