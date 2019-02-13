@@ -102,10 +102,10 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
                 
                 // Let gas sink -- one may well want to change this formula
                 gas_sink = GasSinkRate * unstable_gas;
-                
                 if(unstable_gas - gas_sink < MIN_STARFORMATION) {// Not enough unstable gas to form stars
                     gas_sink = unstable_gas;
                 }
+                
                 //update "DiscGas"
                 DiskGasClone[i] -= gas_sink;
                 //Gal[p].DiscGasMetals[i] -= metallicity * gas_sink;
@@ -114,7 +114,7 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
                 
                 if(i==N_BINS-1)
                 {
-                    //DiskGasClone[i-1] += gas_sink;
+                    DiskGasClone[i-1] += gas_sink;
                     //Gal[p].DiscGasMetals[i-1] += metallicity * gas_sink;
                     //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
                 }
@@ -137,25 +137,29 @@ void count_disk_stars(int p, double all_stars[N_BINS], double annuli_energy[N_BI
                         double j_lose = (DiscBinEdge[i+1]-DiscBinEdge[i-1])/2.0;
                         double m_up = j_lose / (j_gain + j_lose) * gas_sink;
                         double m_down = m_up * j_gain / j_lose;
-                        //DiskGasClone[i-1] += m_down;
+                        DiskGasClone[i-1] += m_down;
                         //Gal[p].DiscGasMetals[i-1] += metallicity * m_down;
                         //assert(Gal[p].DiscGasMetals[i-1] <= Gal[p].DiscGas[i-1]);
                     }
                     
-                    //DiskGasClone[i+1] += m_up;
+                    DiskGasClone[i+1] += m_up;
                     //Gal[p].DiscGasMetals[i+1] += metallicity * m_up;
                     //assert(Gal[p].DiscGasMetals[i+1] <= Gal[p].DiscGas[i+1]);
                 }
                 
                 // Calculate new stars formed in that annulus
-                stars = unstable_gas - gas_sink;
-                
+                all_stars[i] = unstable_gas - gas_sink;
             } else {
-                stars = 0.0;
+                all_stars[i] = 0.0;
             }
-            double energy = 0.5 * 630 * 630 * stars;
-            all_stars[i] = stars;
-            annuli_energy[i] = energy;
+            annuli_energy[i] = 0.5 * 630 * 630 * all_stars[i];
+            //printf("energy: %f",energy);
+
+            //all_stars[i] = 1.0*stars;
+            //annuli_energy[i] = 1.0*energy;
+        } else {
+            all_stars[i] = 0.0;
+            annuli_energy[i] = 0.0;
         }
     }
 }
