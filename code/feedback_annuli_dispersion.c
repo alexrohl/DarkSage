@@ -14,11 +14,39 @@
 //Function to deal with energy distribution
 //now implemented with inner/outer argument
 //height = 11^2 / 2*PI*G*(gas + stars)
+void disperse_energy_outward(double energy, double annuli_energy[N_BINS], int affected_index) {
+    if (affected_index >= N_BINS) {
+        //printf("stopped: %d\n", affected_index);
+    } else {
+        double new_energy = EnergyEfficiencyC2H * energy;
+        double excess_energy = energy - new_energy;
+        annuli_energy[affected_index] += new_energy;
+        //printf("affected_index: %d\n", affected_index);
+        disperse_energy_outward(excess_energy, annuli_energy, affected_index+1);
+    }
+    return;
+}
+
+void disperse_energy_inward(double energy, double annuli_energy[N_BINS], int affected_index) {
+    if (affected_index < 0) {
+        //printf("stopped: %d\n", affected_index);
+    } else {
+        double new_energy = EnergyEfficiencyC2H * energy;
+        double excess_energy = energy - new_energy;
+        annuli_energy[affected_index] += new_energy;
+        //printf("affected_index: %d\n", affected_index);
+        disperse_energy_inward(excess_energy, annuli_energy, affected_index-1);
+    }
+    
+    return;
+}
+
 void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BINS], int p) {
     int i;
     double annuli_energy_final[N_BINS];
     for(i=0; i<N_BINS; i++) {
         annuli_energy_final[i] = 0.0;
+        //printf("EnergyIn: %f\n", annuli_energy_init[i]);
     }
     
     //to check if we are working in inner-most or outer-most radii
@@ -52,7 +80,12 @@ void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BIN
         double r_inner = 1.0*Gal[p].DiscRadii[i];
         double r_outer = 1.0*Gal[p].DiscRadii[i+1];
         double r_av = sqrt((sqr(r_inner)+sqr(r_outer))/2.0);
-        double energy = 1.0*annuli_energy_init[i];
+        double energy;
+        if (annuli_energy_init[i] > 0.0) {
+            energy = 1.0*annuli_energy_init[i];
+        } else {
+            energy = 0.0;
+        }
         double innerVol = (M_PI/3) * (r_av - r_inner) * (r_av + 2*r_inner) * h_inner;
         double outerVol = (M_PI/3) * (r_outer - r_av) * (r_av + 2*r_outer) * h_outer;
         double totalVol = (M_PI/3) * (r_outer - r_inner) * (h_inner*(r_inner + 2*r_outer) + h_outer*(r_outer + 2*r_inner));
@@ -65,16 +98,22 @@ void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BIN
             inner_prop = innerVol / totalVol;
             remaining_prop = remainVol / totalVol;
             outer_prop = outerVol / totalVol;
+        } else {
+            //printf("total:%f", totalVol);
+
         }
         assert(r_av >= r_inner);
+        //printf("total:%f", totalVol);
         double area = M_PI * (r_outer*r_outer - r_inner*r_inner);
         
         assert(outer<N_BINS);
-        //printf("%d, %d\n",inner,outer);
-        annuli_energy_final[inner] += energy * inner_prop;
+        
+        //Disperse inward energy towards the center
+        disperse_energy_inward(energy * inner_prop, annuli_energy_final, inner);
+        //Update the annulus energy based on the remaining proportion
         annuli_energy_final[i]     += energy * remaining_prop;
-        annuli_energy_final[outer] += energy * outer_prop;
-        //printf("energy in: %f, ", energy);
+        //Disperse outward energy towards edge of galaxy
+        disperse_energy_outward(energy * outer_prop, annuli_energy_final, outer);
     }
     for(i=0; i<N_BINS; i++)
     {
@@ -85,16 +124,10 @@ void distribute_energy(double all_stars[N_BINS], double annuli_energy_init[N_BIN
             annuli_energy_init[i] = 0.00000;
         }
         assert(annuli_energy_init[i] >= 0);
-        //if(isnan(annuli_energy_final[i])){
-        
-        //}//printf("inner:%f, outer:%f, av: %f, oprop: %f, energy: %f, FINAL:%f\n",r_inner, r_outer, r_av,outer_prop, energy, annuli_energy_init[i]);
-        //printf("energy out: %f, ", annuli_energy_init[i]);
-        
+        //printf("EnergyOut: %f\n", annuli_energy_init[i]);
     }
-    //check
-    //for(i=0; i<N_BINS; i++)
-    //{ printf("energy_final: %f\n", annuli_energy_init[i]); }
-    //
+    //recursive call
+    
 }
 
 //recipe essentially deals with updating all the necessay fields.
@@ -412,9 +445,19 @@ void feedback_dispersed(int p, int centralgal, double dt, int step, double NewSt
     }
     
     //redistribute energy here:
-
-    distribute_energy(all_stars, annuli_energy_init, p);
+    int j;
+    for(i=0; i<30; i++)
+    {
+        distribute_energy(all_stars, annuli_energy_init, p);
+        /*printf("iteration: %d\n", i);
+        for(j=0; j<N_BINS; j++)
+        {
+            printf("energy: %d, %f\n",j,annuli_energy_init[j]);
+        }
+         */
+    }
     //energy now redistrubted.
+    
     for(i=0; i<N_BINS; i++)
     {
         double energy = 1.0*annuli_energy_init[i];
