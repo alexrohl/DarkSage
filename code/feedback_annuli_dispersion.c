@@ -15,29 +15,24 @@
 //now implemented with inner/outer argument
 //height = 11^2 / 2*PI*G*(gas + stars)
 void disperse_energy_outward(double energy, double annuli_energy[N_BINS], int affected_index) {
-    if (affected_index >= N_BINS) {
-        //printf("stopped: %d\n", affected_index);
-    } else {
+    if (affected_index < N_BINS) {
         double new_energy = EnergyEfficiencyC2H * energy;
         double excess_energy = energy - new_energy;
         annuli_energy[affected_index] += new_energy;
-        //printf("affected_index: %d\n", affected_index);
+        //recursive call
         disperse_energy_outward(excess_energy, annuli_energy, affected_index+1);
     }
     return;
 }
 
 void disperse_energy_inward(double energy, double annuli_energy[N_BINS], int affected_index) {
-    if (affected_index < 0) {
-        //printf("stopped: %d\n", affected_index);
-    } else {
+    if (affected_index >= 0) {
         double new_energy = EnergyEfficiencyC2H * energy;
         double excess_energy = energy - new_energy;
         annuli_energy[affected_index] += new_energy;
-        //printf("affected_index: %d\n", affected_index);
+        //recursive call
         disperse_energy_inward(excess_energy, annuli_energy, affected_index-1);
     }
-    
     return;
 }
 
